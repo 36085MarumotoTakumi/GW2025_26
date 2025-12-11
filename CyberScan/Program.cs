@@ -1,4 +1,5 @@
 ﻿using Avalonia;
+using Avalonia.Media; // ★追加: FontManagerOptionsを使うために必要
 using Avalonia.ReactiveUI;
 using System;
 
@@ -17,7 +18,13 @@ namespace CyberScan
         public static AppBuilder BuildAvaloniaApp()
             => AppBuilder.Configure<App>()
                 .UsePlatformDetect()
-                .WithInterFont() // ★ここを追加：内蔵フォント(Inter)を強制的に使用してエラーを回避
+                .WithInterFont() // 内蔵フォント(Inter)をロード
+                .With(new FontManagerOptions
+                {
+                    // ★追加: OSのデフォルトフォントが見つからない場合のエラー回避策
+                    // WithInterFont()でロードされた "Inter" をアプリ全体のデフォルトに強制指定します
+                    DefaultFamilyName = "Inter"
+                })
                 .LogToTrace()
                 .UseReactiveUI();
     }
