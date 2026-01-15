@@ -37,6 +37,16 @@
             <Setter Property="Foreground" Value="#333333"/>
             <Setter Property="BorderBrush" Value="#333333"/>
         </Style>
+        <!-- 危険なアクション用のボタンスタイル -->
+        <Style Selector="Button.Danger">
+            <Setter Property="Foreground" Value="#FF3333"/>
+            <Setter Property="BorderBrush" Value="#FF3333"/>
+        </Style>
+        <Style Selector="Button.Danger:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#330000"/>
+            <Setter Property="Foreground" Value="#FF0000"/>
+        </Style>
+        
         <Style Selector="TextBlock.Header">
             <Setter Property="FontSize" Value="32"/>
             <Setter Property="FontWeight" Value="Bold"/>
@@ -72,10 +82,9 @@
             </StackPanel>
         </Border>
 
-        <!-- 3. ログ出力エリア (ターミナル風) -->
+        <!-- 3. ログ出力エリア -->
         <Border Grid.Row="2" BorderBrush="#00FF41" BorderThickness="2" Background="#000000" CornerRadius="5">
             <Grid>
-                <!-- スキャンラインエフェクト（装飾） -->
                 <Border Background="#1100FF00" IsHitTestVisible="False"/>
                 <ScrollViewer Name="LogScrollViewer" Margin="10">
                     <TextBlock Name="LogOutput" FontFamily="Monospace" TextWrapping="Wrap" FontSize="16" LineHeight="24"/>
@@ -83,7 +92,7 @@
             </Grid>
         </Border>
 
-        <!-- 4. コントロールパネル (動的にボタンが変わる) -->
+        <!-- 4. コントロールパネル -->
         <StackPanel Grid.Row="3" Margin="0,30,0,0">
             
             <!-- フェーズ1: 偵察開始 -->
@@ -92,9 +101,10 @@
                 <TextBlock Text="Press 'F11' to Toggle Fullscreen | 'Ctrl+Q' to Quit" FontSize="12" Foreground="Gray" HorizontalAlignment="Center" Margin="0,10,0,0"/>
             </StackPanel>
 
-            <!-- フェーズ2: 攻撃選択 (初期は非表示) -->
+            <!-- フェーズ2: 攻撃選択 -->
             <StackPanel Name="Phase2Panel" IsVisible="False" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="20">
-                <Button Name="WebAttackButton" Content="[ WEB VULNERABILITY SCAN ]" Click="OnWebAttackClick" IsEnabled="False"/>
+                <!-- ここを変更: Web脆弱性診断 -> DoS攻撃 -->
+                <Button Name="DosAttackButton" Classes="Danger" Content="[ DoS ATTACK (SSL STRESS) ]" Click="OnDosAttackClick" IsEnabled="False"/>
                 <Button Name="BruteForceButton" Content="[ SSH PASSWORD CRACK ]" Click="OnBruteForceClick" IsEnabled="False"/>
                 <Button Content="[ RESET SYSTEM ]" Click="OnResetClick" Background="#330000" BorderBrush="#FF0000" Foreground="#FF0000"/>
             </StackPanel>
