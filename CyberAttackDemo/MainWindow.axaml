@@ -3,8 +3,8 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="1024" d:DesignHeight="768"
-        x:Class="CyberScan.MainWindow"
-        Title="CyberScan"
+        x:Class="CyberAttackDemo.MainWindow"
+        Title="CyberAttackDemo"
         
         WindowState="FullScreen"
         SystemDecorations="None"
@@ -13,7 +13,6 @@
         Background="#050505"
         Foreground="#00FF41">
 
-    <!-- スタイル定義 -->
     <Window.Styles>
         <Style Selector="Button">
             <Setter Property="Background" Value="#1A1A1A"/>
@@ -37,7 +36,22 @@
             <Setter Property="Foreground" Value="#333333"/>
             <Setter Property="BorderBrush" Value="#333333"/>
         </Style>
-        <!-- 危険なアクション用のボタンスタイル -->
+        
+        <Style Selector="ComboBox">
+            <Setter Property="Background" Value="#1A1A1A"/>
+            <Setter Property="Foreground" Value="#00FF41"/>
+            <Setter Property="BorderBrush" Value="#00FF41"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="FontSize" Value="20"/>
+            <Setter Property="Padding" Value="15,10"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="Width" Value="400"/>
+        </Style>
+        <Style Selector="ComboBoxItem">
+            <Setter Property="Foreground" Value="#00FF41"/>
+            <Setter Property="Background" Value="#1A1A1A"/>
+        </Style>
+
         <Style Selector="Button.Danger">
             <Setter Property="Foreground" Value="#FF3333"/>
             <Setter Property="BorderBrush" Value="#FF3333"/>
@@ -45,6 +59,14 @@
         <Style Selector="Button.Danger:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="#330000"/>
             <Setter Property="Foreground" Value="#FF0000"/>
+        </Style>
+        
+        <!-- テキストボックスのフォント指定を削除しデフォルト(Inter)に任せる -->
+        <Style Selector="TextBox">
+            <Setter Property="Background" Value="#000000"/>
+            <Setter Property="Foreground" Value="#00FF41"/>
+            <Setter Property="CaretBrush" Value="#00FF41"/>
+            <Setter Property="BorderBrush" Value="#008F11"/>
         </Style>
         
         <Style Selector="TextBlock.Header">
@@ -57,20 +79,16 @@
         </Style>
         <Style Selector="TextBlock.Status">
             <Setter Property="FontSize" Value="18"/>
-            <Setter Property="FontFamily" Value="Monospace"/>
         </Style>
     </Window.Styles>
 
-    <!-- メインレイアウト -->
     <Grid RowDefinitions="Auto, Auto, *, Auto" Margin="40">
         
-        <!-- 1. ヘッダーエリア -->
         <StackPanel Grid.Row="0" HorizontalAlignment="Center" Spacing="10" Margin="0,0,0,30">
             <TextBlock Classes="Header" Text="CYBER ATTACK SIMULATOR" HorizontalAlignment="Center"/>
             <TextBlock Text="AUTHORIZED PERSONNEL ONLY" FontSize="14" Foreground="#FF3333" HorizontalAlignment="Center" LetterSpacing="3"/>
         </StackPanel>
 
-        <!-- 2. ターゲット情報エリア -->
         <Border Grid.Row="1" BorderBrush="#008F11" BorderThickness="1,0,1,0" Background="#0A0A0A" Padding="20" Margin="0,0,0,20">
             <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Spacing="10">
                 <TextBlock Text="LOCKED TARGET SYSTEM" Foreground="Gray" FontSize="14" HorizontalAlignment="Center"/>
@@ -82,31 +100,32 @@
             </StackPanel>
         </Border>
 
-        <!-- 3. ログ出力エリア -->
         <Border Grid.Row="2" BorderBrush="#00FF41" BorderThickness="2" Background="#000000" CornerRadius="5">
             <Grid>
                 <Border Background="#1100FF00" IsHitTestVisible="False"/>
                 <ScrollViewer Name="LogScrollViewer" Margin="10">
-                    <TextBlock Name="LogOutput" FontFamily="Monospace" TextWrapping="Wrap" FontSize="16" LineHeight="24"/>
+                    <!-- フォント指定を削除してクラッシュ回避 -->
+                    <TextBlock Name="LogOutput" TextWrapping="Wrap" FontSize="16" LineHeight="24"/>
                 </ScrollViewer>
             </Grid>
         </Border>
 
-        <!-- 4. コントロールパネル -->
         <StackPanel Grid.Row="3" Margin="0,30,0,0">
             
-            <!-- フェーズ1: 偵察開始 -->
             <StackPanel Name="Phase1Panel" IsVisible="True">
                 <Button Name="ScanButton" Content="[ STEP 1: START PORT SCAN ]" Click="OnScanClick"/>
                 <TextBlock Text="Press 'F11' to Toggle Fullscreen | 'Ctrl+Q' to Quit" FontSize="12" Foreground="Gray" HorizontalAlignment="Center" Margin="0,10,0,0"/>
             </StackPanel>
 
-            <!-- フェーズ2: 攻撃選択 -->
-            <StackPanel Name="Phase2Panel" IsVisible="False" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="20">
-                <!-- ここを変更: Web脆弱性診断 -> DoS攻撃 -->
-                <Button Name="DosAttackButton" Classes="Danger" Content="[ DoS ATTACK (SSL STRESS) ]" Click="OnDosAttackClick" IsEnabled="False"/>
-                <Button Name="BruteForceButton" Content="[ SSH PASSWORD CRACK ]" Click="OnBruteForceClick" IsEnabled="False"/>
-                <Button Content="[ RESET SYSTEM ]" Click="OnResetClick" Background="#330000" BorderBrush="#FF0000" Foreground="#FF0000"/>
+            <StackPanel Name="Phase2Panel" IsVisible="False" HorizontalAlignment="Center" Spacing="20">
+                <StackPanel Orientation="Horizontal" Spacing="15">
+                    <ComboBox Name="AttackSelector" SelectedIndex="0">
+                        <ComboBoxItem>DoS Attack (Maximum Load)</ComboBoxItem>
+                        <ComboBoxItem>SSH Password Crack</ComboBoxItem>
+                    </ComboBox>
+                    <Button Name="ExecuteButton" Content="[ EXECUTE ]" Classes="Danger" Click="OnExecuteClick"/>
+                </StackPanel>
+                <Button Content="[ RESET SYSTEM ]" Click="OnResetClick" Background="#330000" BorderBrush="#FF0000" Foreground="#FF0000" Margin="0,20,0,0"/>
             </StackPanel>
             
         </StackPanel>
