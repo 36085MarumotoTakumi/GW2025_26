@@ -1,6 +1,6 @@
 {
   "profiles": {
-    "CyberScan": {
+    "CyberAttackDemo": {
       "commandName": "Project"
     },
     "WSL": {
