@@ -20,7 +20,7 @@ namespace CyberAttackDemo
                 .UsePlatformDetect()
                 .With(new FontManagerOptions
                 {
-                    DefaultFamilyName = "avares://CyberScan/Fonts#Roboto"
+                    DefaultFamilyName = "avares://CyberAttackDemo/Fonts#Roboto"
                 })
                 .LogToTrace()
                 .UseReactiveUI();
