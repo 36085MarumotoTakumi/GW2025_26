@@ -3,7 +3,7 @@ using Avalonia.Media; // ★追加: FontManagerOptionsを使うために必要
 using Avalonia.ReactiveUI;
 using System;
 
-namespace CyberScan
+namespace CyberAttackDemo
 {
     class Program
     {

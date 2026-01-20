@@ -1,4 +1,4 @@
-namespace CyberScan
+namespace CyberAttackDemo
 {
     public static class LogTranslator
     {
