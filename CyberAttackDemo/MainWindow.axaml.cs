@@ -6,7 +6,7 @@ using Avalonia.Threading;
 using CyberAttackDemo;
 using System;
 
-namespace CyberScan
+namespace CyberAttackDemo
 {
     public partial class MainWindow : Window
     {
