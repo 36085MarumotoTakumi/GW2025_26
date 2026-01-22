@@ -4,7 +4,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="1024" d:DesignHeight="768"
         x:Class="CyberAttackDemo.MainWindow"
-        Title="CyberAttackDemo"
+        Title="CyberScan"
         
         WindowState="FullScreen"
         SystemDecorations="None"
@@ -37,6 +37,23 @@
             <Setter Property="Foreground" Value="#333333"/>
             <Setter Property="BorderBrush" Value="#333333"/>
         </Style>
+        
+        <!-- コンボボックスのスタイル -->
+        <Style Selector="ComboBox">
+            <Setter Property="Background" Value="#1A1A1A"/>
+            <Setter Property="Foreground" Value="#00FF41"/>
+            <Setter Property="BorderBrush" Value="#00FF41"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="FontSize" Value="20"/>
+            <Setter Property="Padding" Value="15,10"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="Width" Value="400"/>
+        </Style>
+        <Style Selector="ComboBoxItem">
+            <Setter Property="Foreground" Value="#00FF41"/>
+            <Setter Property="Background" Value="#1A1A1A"/>
+        </Style>
+
         <!-- 危険なアクション用のボタンスタイル -->
         <Style Selector="Button.Danger">
             <Setter Property="Foreground" Value="#FF3333"/>
@@ -102,11 +119,21 @@
             </StackPanel>
 
             <!-- フェーズ2: 攻撃選択 -->
-            <StackPanel Name="Phase2Panel" IsVisible="False" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="20">
-                <!-- ここを変更: Web脆弱性診断 -> DoS攻撃 -->
-                <Button Name="DosAttackButton" Classes="Danger" Content="[ DoS ATTACK (SSL STRESS) ]" Click="OnDosAttackClick" IsEnabled="False"/>
-                <Button Name="BruteForceButton" Content="[ SSH PASSWORD CRACK ]" Click="OnBruteForceClick" IsEnabled="False"/>
-                <Button Content="[ RESET SYSTEM ]" Click="OnResetClick" Background="#330000" BorderBrush="#FF0000" Foreground="#FF0000"/>
+            <StackPanel Name="Phase2Panel" IsVisible="False" HorizontalAlignment="Center" Spacing="20">
+                
+                <StackPanel Orientation="Horizontal" Spacing="15">
+                    <!-- 攻撃手法選択コンボボックス (NetSTRIKを追加) -->
+                    <ComboBox Name="AttackSelector" SelectedIndex="0">
+                        <ComboBoxItem>DoS Attack (Maximum Load)</ComboBoxItem>
+                        <ComboBoxItem>SSH Password Crack</ComboBoxItem>
+                        <ComboBoxItem>NetSTRIK Attack (Python)</ComboBoxItem>
+                    </ComboBox>
+                    
+                    <!-- 実行ボタン -->
+                    <Button Name="ExecuteButton" Content="[ EXECUTE ]" Classes="Danger" Click="OnExecuteClick"/>
+                </StackPanel>
+
+                <Button Content="[ RESET SYSTEM ]" Click="OnResetClick" Background="#330000" BorderBrush="#FF0000" Foreground="#FF0000" Margin="0,20,0,0"/>
             </StackPanel>
             
         </StackPanel>

@@ -5,6 +5,7 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using CyberAttackDemo;
 using System;
+using System.Threading.Tasks;
 
 namespace CyberAttackDemo
 {
@@ -88,16 +89,28 @@ namespace CyberAttackDemo
             if (Phase1Panel != null) Phase1Panel.IsVisible = false;
             if (Phase2Panel != null) Phase2Panel.IsVisible = true;
             
-            if (DosAttackButton != null) DosAttackButton.IsEnabled = true; 
-            if (BruteForceButton != null) BruteForceButton.IsEnabled = true;
+            if (AttackSelector != null) AttackSelector.IsEnabled = true;
+            if (ExecuteButton != null) ExecuteButton.IsEnabled = true;
             
             UpdateStatus("VULNERABILITY DETECTED. SELECT ACTION.", Avalonia.Media.Brushes.Red);
         }
 
-        // --- フェーズ2A: DoS攻撃 (Shell Script) ---
-        private async void OnDosAttackClick(object sender, RoutedEventArgs e)
+        // --- フェーズ2: 攻撃実行 (コンボボックス判定) ---
+        private async void OnExecuteClick(object sender, RoutedEventArgs e)
         {
-            SetBusyState(true, "EXECUTING MAXIMUM LOAD ATTACK...", Avalonia.Media.Brushes.Red);
+            if (AttackSelector == null) return;
+
+            int selectedIndex = AttackSelector.SelectedIndex;
+
+            if (selectedIndex == 0) await RunDosAttack();
+            else if (selectedIndex == 1) await RunBruteForce();
+            else if (selectedIndex == 2) await RunNetStrik(); // 追加: NetSTRIK
+        }
+
+        // --- DoS攻撃 ---
+        private async Task RunDosAttack()
+        {
+            SetBusyState(true, "EXECUTING DoS ATTACK...", Avalonia.Media.Brushes.Red);
             WriteLog("\n==========================================");
             WriteLog($"[*] INITIATING SHELL-SCRIPTED FLOOD ATTACK...");
             WriteLog($"[*] DURATION LIMIT: {_config.DdosDuration} SECONDS");
@@ -108,15 +121,15 @@ namespace CyberAttackDemo
             await _engine.EnsureAttackScriptExistsAsync();
 
             // bash attack.sh <IP> <DURATION>
-            string args = $@"./Attack/attack.sh {_config.TargetIp} {_config.DdosDuration}";
+            string args = $"{AttackEngine.AttackScriptName} {_config.TargetIp} {_config.DdosDuration}";
             await _engine.RunCommandAsync("bash", args);
 
             WriteLog("\n[ATTACK STOPPED] SHELL SCRIPT TERMINATED.");
             SetBusyState(false, "READY FOR NEXT COMMAND.");
         }
 
-        // --- フェーズ2B: パスワードクラック ---
-        private async void OnBruteForceClick(object sender, RoutedEventArgs e)
+        // --- SSHパスワードクラック ---
+        private async Task RunBruteForce()
         {
             SetBusyState(true, "CRACKING PASSWORDS...", Avalonia.Media.Brushes.Red);
             WriteLog("\n==========================================");
@@ -127,6 +140,23 @@ namespace CyberAttackDemo
             await _engine.RunCommandAsync("nmap", $"-p 22 --script ssh-auth-methods {_config.TargetIp}");
 
             WriteLog("\n[ATTACK FINISHED] ACCESS ATTEMPTS LOGGED.");
+            SetBusyState(false, "READY FOR NEXT COMMAND.");
+        }
+
+        // --- NetSTRIK攻撃 (追加) ---
+        private async Task RunNetStrik()
+        {
+            SetBusyState(true, "EXECUTING NetSTRIK ATTACK...", Avalonia.Media.Brushes.Red);
+            WriteLog("\n==========================================");
+            WriteLog($"[*] INITIATING NetSTRIK Python Script...");
+            WriteLog("==========================================");
+
+            // 指定されたコマンド: python3 ./Attack/NetSTRIK.py -s <ip> -p 135 -t 200
+            // ※Pythonスクリプトファイルが存在することを確認してください
+            string args = $"./Attack/NetSTRIK.py -s {_config.TargetIp} -p 135 -t 200";
+            await _engine.RunCommandAsync("python3", args);
+
+            WriteLog("\n[ATTACK FINISHED] NetSTRIK Execution Complete.");
             SetBusyState(false, "READY FOR NEXT COMMAND.");
         }
 
@@ -151,14 +181,14 @@ namespace CyberAttackDemo
         {
             if (isBusy)
             {
-                if (DosAttackButton != null) DosAttackButton.IsEnabled = false;
-                if (BruteForceButton != null) BruteForceButton.IsEnabled = false;
+                if (ExecuteButton != null) ExecuteButton.IsEnabled = false;
+                if (AttackSelector != null) AttackSelector.IsEnabled = false;
                 if (ScanButton != null) ScanButton.IsEnabled = false;
             }
             else
             {
-                if (DosAttackButton != null) DosAttackButton.IsEnabled = true;
-                if (BruteForceButton != null) BruteForceButton.IsEnabled = true;
+                if (ExecuteButton != null) ExecuteButton.IsEnabled = true;
+                if (AttackSelector != null) AttackSelector.IsEnabled = true;
                 if (ScanButton != null) ScanButton.IsEnabled = true;
             }
             UpdateStatus(statusText, color);
