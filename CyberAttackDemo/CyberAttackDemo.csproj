@@ -20,4 +20,10 @@
   <ItemGroup>
     <AvaloniaResource Include="Fonts\**" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Attack\attack.sh">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 </Project>

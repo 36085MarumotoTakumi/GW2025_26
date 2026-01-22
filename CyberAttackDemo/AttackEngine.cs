@@ -10,7 +10,7 @@ namespace CyberAttackDemo
         // ログ出力イベント（UIに通知するため）
         public event Action<string>? OnLogReceived;
         
-        private const string AttackScriptName = @"/Attack/attack.sh";
+        public const string AttackScriptName = @"/Attack/attack.sh";
 
         // 外部コマンド実行
         public async Task RunCommandAsync(string command, string args)
