@@ -15,7 +15,10 @@
     <!-- ReactiveUI is included by default in some templates but not strictly needed for this simple code, 
          but keeping standard packages is safer. -->
     <PackageReference Include="Avalonia.ReactiveUI" Version="11.0.0" />
-  </ItemGroup>
+	<Content Include="./Attack/attack.sh">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+  </Content>  
+</ItemGroup>
 
   <ItemGroup>
     <AvaloniaResource Include="Fonts\**" />

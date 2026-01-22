@@ -108,7 +108,7 @@ namespace CyberAttackDemo
             await _engine.EnsureAttackScriptExistsAsync();
 
             // bash attack.sh <IP> <DURATION>
-            string args = $@"/Attack/attack.sh {_config.TargetIp} {_config.DdosDuration}";
+            string args = $@"./Attack/attack.sh {_config.TargetIp} {_config.DdosDuration}";
             await _engine.RunCommandAsync("bash", args);
 
             WriteLog("\n[ATTACK STOPPED] SHELL SCRIPT TERMINATED.");
