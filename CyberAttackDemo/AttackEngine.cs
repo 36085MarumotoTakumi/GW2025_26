@@ -7,10 +7,12 @@ namespace CyberAttackDemo
 {
     public class AttackEngine
     {
-        // ログ出力イベント（UIに通知するため）
+        // ログ出力イベント
         public event Action<string>? OnLogReceived;
         
-        private const string AttackScriptName = "attack.sh";
+        // 保存先パスを "/attack/attack.sh" に変更
+        // MainWindowからも参照できるよう public に変更
+        public const string AttackScriptName = "/attack/attack.sh";
 
         // 外部コマンド実行
         public async Task RunCommandAsync(string command, string args)
@@ -34,7 +36,6 @@ namespace CyberAttackDemo
                 {
                     if (e.Data != null)
                     {
-                        // ここで翻訳ロジックを通す
                         string translated = LogTranslator.Translate(e.Data);
                         OnLogReceived?.Invoke(translated);
                     }
@@ -56,7 +57,6 @@ namespace CyberAttackDemo
             {
                 OnLogReceived?.Invoke($"[ERROR] Command Execution Failed: {ex.Message}");
                 
-                // デモ用フォールバックメッセージ
                 await Task.Delay(1000);
                 if (command.Contains("bash") || args.Contains("attack.sh"))
                 {
@@ -74,8 +74,16 @@ namespace CyberAttackDemo
         {
             try
             {
-                // 毎回生成して常に最新の状態にする（設定変更への対応などはここで行う）
-                // 既存のファイルがあっても上書きするロジックに変更しても良いが、今回は「なければ作る」維持
+                // 1. ディレクトリ "/attack" がなければ作成する
+                string? dir = Path.GetDirectoryName(AttackScriptName);
+                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                    OnLogReceived?.Invoke($"[SYSTEM] Created directory: {dir}");
+                }
+
+                // 2. スクリプトファイルがなければ作成する
+                // （設定変更を反映させるため、常に上書きする仕様に変更しても良いが、今回は存在確認のみ）
                 if (!File.Exists(AttackScriptName))
                 {
                     string scriptContent = @"#!/bin/bash
