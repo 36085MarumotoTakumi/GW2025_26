@@ -14,7 +14,7 @@ namespace CyberAttackDemo
             if (rawLog.Contains("22/tcp") && rawLog.Contains("open")) 
                 output += "   <-- [発見] SSHポートです。パスワードクラック可能です。";
             
-            // --- 攻撃スクリプト (hping3) 関連 ---
+            // --- 攻撃スクリプト 関連 ---
             if (rawLog.Contains("Vector 1")) 
                 output = $"[攻撃プロセス起動] TCP SYN Flood (Port 443/HTTPS) 開始...";
             if (rawLog.Contains("Vector 2")) 
@@ -31,12 +31,6 @@ namespace CyberAttackDemo
             if (rawLog.Contains("CEASE FIRE"))
             {
                 output = $"[攻撃停止] 制限時間に達しました。攻撃を終了します。";
-            }
-
-            // --- NetSTRIK 関連 ---
-            if (rawLog.Contains("NetSTRIK") || rawLog.Contains(".py"))
-            {
-                output = $"[外部ツール] Pythonスクリプトを実行中... ({rawLog.Trim()})";
             }
             
             return output;

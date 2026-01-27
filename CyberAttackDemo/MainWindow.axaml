@@ -4,7 +4,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="1024" d:DesignHeight="768"
         x:Class="CyberAttackDemo.MainWindow"
-        Title="CyberScan"
+        Title="CyberAttackDemo"
         
         WindowState="FullScreen"
         SystemDecorations="None"
@@ -122,11 +122,10 @@
             <StackPanel Name="Phase2Panel" IsVisible="False" HorizontalAlignment="Center" Spacing="20">
                 
                 <StackPanel Orientation="Horizontal" Spacing="15">
-                    <!-- 攻撃手法選択コンボボックス (NetSTRIKを追加) -->
+                    <!-- 攻撃手法選択コンボボックス -->
                     <ComboBox Name="AttackSelector" SelectedIndex="0">
                         <ComboBoxItem>DoS Attack (Maximum Load)</ComboBoxItem>
                         <ComboBoxItem>SSH Password Crack</ComboBoxItem>
-                        <ComboBoxItem>NetSTRIK Attack (Python)</ComboBoxItem>
                     </ComboBox>
                     
                     <!-- 実行ボタン -->
