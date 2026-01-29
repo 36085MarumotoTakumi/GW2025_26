@@ -4,5 +4,4 @@
 nmap
 hping3
 Hydra(予定)
-DDos_Attack.py(予定)
-
+Curl(ディレクトリトラバーサル)

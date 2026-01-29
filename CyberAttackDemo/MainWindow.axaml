@@ -126,6 +126,8 @@
                     <ComboBox Name="AttackSelector" SelectedIndex="0">
                         <ComboBoxItem>DoS Attack (Maximum Load)</ComboBoxItem>
                         <ComboBoxItem>SSH Password Crack</ComboBoxItem>
+                        <!-- NetSTRIKの代わりにトラバーサル攻撃（シミュレーション）を追加 -->
+                        <ComboBoxItem>Directory Traversal (Simulation)</ComboBoxItem>
                     </ComboBox>
                     
                     <!-- 実行ボタン -->
