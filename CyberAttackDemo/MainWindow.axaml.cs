@@ -77,7 +77,6 @@ namespace CyberAttackDemo
             if (Phase1Panel != null) Phase1Panel.IsVisible = false;
             if (Phase2Panel != null) Phase2Panel.IsVisible = true;
             
-            // UI有効化（古いボタンではなくコンボボックス等を有効化）
             if (AttackSelector != null) AttackSelector.IsEnabled = true;
             if (ExecuteButton != null) ExecuteButton.IsEnabled = true;
             
@@ -108,6 +107,7 @@ namespace CyberAttackDemo
 
             await _engine.EnsureAttackScriptExistsAsync();
 
+            // mode = dos
             string args = $"{AttackEngine.AttackScriptName} {_config.TargetIp} {_config.DdosDuration} dos";
             await _engine.RunCommandAsync("bash", args, _config.DdosDuration);
 
@@ -115,17 +115,24 @@ namespace CyberAttackDemo
             SetBusyState(false, "READY FOR NEXT COMMAND.");
         }
 
-        // --- SSH攻撃 ---
+        // --- SSH攻撃 (Hydra) ---
         private async Task RunBruteForce()
         {
             SetBusyState(true, "CRACKING PASSWORDS...", Avalonia.Media.Brushes.Red);
             WriteLog("\n==========================================");
-            WriteLog("[*] INITIATING BRUTE FORCE ATTACK (SSH)...");
+            WriteLog("[*] INITIATING SSH BRUTE FORCE ATTACK (Hydra)...");
+            WriteLog("[*] USER: root");
+            WriteLog("[*] WORDLIST: Built-in (Top 5 common passwords)");
             WriteLog("==========================================");
 
-            await _engine.RunCommandAsync("nmap", $"-p 22 --script ssh-auth-methods {_config.TargetIp}");
+            await _engine.EnsureAttackScriptExistsAsync();
 
-            WriteLog("\n[ATTACK FINISHED] ACCESS ATTEMPTS LOGGED.");
+            // mode = hydra
+            string args = $"{AttackEngine.AttackScriptName} {_config.TargetIp} {_config.DdosDuration} hydra";
+            // Hydraは完了まで待つが、万が一のために設定時間+αで強制終了
+            await _engine.RunCommandAsync("bash", args, _config.DdosDuration + 30);
+
+            WriteLog("\n[ATTACK FINISHED] HYDRA SESSION COMPLETE.");
             SetBusyState(false, "READY FOR NEXT COMMAND.");
         }
 
@@ -166,7 +173,6 @@ namespace CyberAttackDemo
         }
 
         // --- UI Helper Methods ---
-        // ここを修正: 古いボタン参照を削除し、新しいUI要素を制御
         private void SetBusyState(bool isBusy, string statusText, Avalonia.Media.IBrush? color = null)
         {
             if (isBusy)

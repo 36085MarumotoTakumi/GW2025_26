@@ -3,5 +3,5 @@
 
 nmap
 hping3
-Hydra(予定)
+Hydra
 Curl(ディレクトリトラバーサル)
