@@ -47,7 +47,7 @@
             <Setter Property="FontSize" Value="20"/>
             <Setter Property="Padding" Value="15,10"/>
             <Setter Property="HorizontalAlignment" Value="Center"/>
-            <Setter Property="Width" Value="400"/>
+            <Setter Property="Width" Value="450"/>
         </Style>
         <Style Selector="ComboBoxItem">
             <Setter Property="Foreground" Value="#00FF41"/>
@@ -82,7 +82,7 @@
     <Grid RowDefinitions="Auto, Auto, *, Auto" Margin="40">
         
         <!-- 1. ヘッダーエリア -->
-        <StackPanel Grid.Row="0" HorizontalAlignment="Center" Spacing="10" Margin="0,0,0,30">
+        <StackPanel Grid.Row="0" HorizontalAlignment="Center" Spacing="10" Margin="0,0,0,20">
             <TextBlock Classes="Header" Text="CYBER ATTACK SIMULATOR" HorizontalAlignment="Center"/>
             <TextBlock Text="AUTHORIZED PERSONNEL ONLY" FontSize="14" Foreground="#FF3333" HorizontalAlignment="Center" LetterSpacing="3"/>
         </StackPanel>
@@ -99,44 +99,45 @@
             </StackPanel>
         </Border>
 
-        <!-- 3. ログ出力エリア -->
+        <!-- 3. ログ出力エリア (大きく表示) -->
         <Border Grid.Row="2" BorderBrush="#00FF41" BorderThickness="2" Background="#000000" CornerRadius="5">
             <Grid>
-                <Border Background="#1100FF00" IsHitTestVisible="False"/>
-                <ScrollViewer Name="LogScrollViewer" Margin="10">
-                    <TextBlock Name="LogOutput" FontFamily="Monospace" TextWrapping="Wrap" FontSize="16" LineHeight="24"/>
+                <!-- 背景エフェクト -->
+                <Border Background="#0800FF00" IsHitTestVisible="False"/>
+                
+                <ScrollViewer Name="LogScrollViewer" Margin="15">
+                    <!-- TextBlockではなくStackPanelに変更（行ごとに色を変えるため） -->
+                    <StackPanel Name="LogContainer" />
                 </ScrollViewer>
             </Grid>
         </Border>
 
-        <!-- 4. コントロールパネル -->
-        <StackPanel Grid.Row="3" Margin="0,30,0,0">
+        <!-- 4. コントロールパネル (下に配置) -->
+        <Grid Grid.Row="3" Margin="0,30,0,0">
             
-            <!-- フェーズ1: 偵察開始 -->
-            <StackPanel Name="Phase1Panel" IsVisible="True">
+            <!-- 中央: フェーズ1 (ポートスキャン) -->
+            <StackPanel Name="Phase1Panel" IsVisible="True" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <Button Name="ScanButton" Content="[ STEP 1: START PORT SCAN ]" Click="OnScanClick"/>
                 <TextBlock Text="Press 'F11' to Toggle Fullscreen | 'Ctrl+Q' to Quit" FontSize="12" Foreground="Gray" HorizontalAlignment="Center" Margin="0,10,0,0"/>
             </StackPanel>
 
-            <!-- フェーズ2: 攻撃選択 -->
-            <StackPanel Name="Phase2Panel" IsVisible="False" HorizontalAlignment="Center" Spacing="20">
+            <!-- 中央: フェーズ2 (攻撃実行) -->
+            <StackPanel Name="Phase2Panel" IsVisible="False" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="20">
+                <ComboBox Name="AttackSelector" SelectedIndex="0" VerticalAlignment="Center">
+                    <ComboBoxItem>DoS Attack (Maximum Load)</ComboBoxItem>
+                    <ComboBoxItem>SSH Password Crack</ComboBoxItem>
+                    <ComboBoxItem>Directory Traversal (Actual)</ComboBoxItem>
+                </ComboBox>
                 
-                <StackPanel Orientation="Horizontal" Spacing="15">
-                    <!-- 攻撃手法選択コンボボックス -->
-                    <ComboBox Name="AttackSelector" SelectedIndex="0">
-                        <ComboBoxItem>DoS Attack (Maximum Load)</ComboBoxItem>
-                        <ComboBoxItem>SSH Password Crack</ComboBoxItem>
-                        <!-- NetSTRIKの代わりにトラバーサル攻撃（シミュレーション）を追加 -->
-                        <ComboBoxItem>Directory Traversal (Simulation)</ComboBoxItem>
-                    </ComboBox>
-                    
-                    <!-- 実行ボタン -->
-                    <Button Name="ExecuteButton" Content="[ EXECUTE ]" Classes="Danger" Click="OnExecuteClick"/>
-                </StackPanel>
-
-                <Button Content="[ RESET SYSTEM ]" Click="OnResetClick" Background="#330000" BorderBrush="#FF0000" Foreground="#FF0000" Margin="0,20,0,0"/>
+                <Button Name="ExecuteButton" Content="[ EXECUTE ]" Classes="Danger" Click="OnExecuteClick" VerticalAlignment="Center"/>
             </StackPanel>
-            
-        </StackPanel>
+
+            <!-- 右下: リセットボタン -->
+            <Button Name="ResetButton" Content="[ RESET SYSTEM ]" Click="OnResetClick" 
+                    Background="#330000" BorderBrush="#FF0000" Foreground="#FF0000" 
+                    HorizontalAlignment="Right" VerticalAlignment="Bottom" 
+                    IsVisible="False"/>
+        </Grid>
+        
     </Grid>
 </Window>
