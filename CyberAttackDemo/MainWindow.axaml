@@ -92,10 +92,10 @@
             <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Spacing="10">
                 <TextBlock Text="LOCKED TARGET SYSTEM" Foreground="Gray" FontSize="14" HorizontalAlignment="Center"/>
                 <StackPanel Orientation="Horizontal" Spacing="20" HorizontalAlignment="Center">
-                    <TextBlock Text="IP ADDRESS:" FontSize="24" FontWeight="Bold" VerticalAlignment="Center"/>
+                    <TextBlock Text="IPアドレス:" FontSize="24" FontWeight="Bold" VerticalAlignment="Center"/>
                     <TextBlock Name="TargetIpDisplay" Text="LOADING..." FontSize="36" FontWeight="ExtraBold" Foreground="#00FF41" VerticalAlignment="Center"/>
                 </StackPanel>
-                <TextBlock Name="StatusText" Text="STATUS: WAITING FOR COMMAND" Classes="Status" Foreground="Yellow" HorizontalAlignment="Center"/>
+                <TextBlock Name="StatusText" Text="状態: 待機中" Classes="Status" Foreground="Yellow" HorizontalAlignment="Center"/>
             </StackPanel>
         </Border>
 
@@ -117,23 +117,23 @@
             
             <!-- 中央: フェーズ1 (ポートスキャン) -->
             <StackPanel Name="Phase1Panel" IsVisible="True" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <Button Name="ScanButton" Content="[ STEP 1: START PORT SCAN ]" Click="OnScanClick"/>
+                <Button Name="ScanButton" Content="ポートスキャンを開始" Click="OnScanClick"/>
                 <TextBlock Text="Press 'F11' to Toggle Fullscreen | 'Ctrl+Q' to Quit" FontSize="12" Foreground="Gray" HorizontalAlignment="Center" Margin="0,10,0,0"/>
             </StackPanel>
 
             <!-- 中央: フェーズ2 (攻撃実行) -->
             <StackPanel Name="Phase2Panel" IsVisible="False" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="20">
                 <ComboBox Name="AttackSelector" SelectedIndex="0" VerticalAlignment="Center">
-                    <ComboBoxItem>DoS Attack (Maximum Load)</ComboBoxItem>
-                    <ComboBoxItem>SSH Password Crack</ComboBoxItem>
-                    <ComboBoxItem>Directory Traversal (Actual)</ComboBoxItem>
+                    <ComboBoxItem>DoS攻撃</ComboBoxItem>
+                    <ComboBoxItem>SSHパスワードクラック</ComboBoxItem>
+                    <ComboBoxItem>ディレクトリトラバーサル</ComboBoxItem>
                 </ComboBox>
                 
-                <Button Name="ExecuteButton" Content="[ EXECUTE ]" Classes="Danger" Click="OnExecuteClick" VerticalAlignment="Center"/>
+                <Button Name="ExecuteButton" Content="[実行]" Classes="Danger" Click="OnExecuteClick" VerticalAlignment="Center"/>
             </StackPanel>
 
             <!-- 右下: リセットボタン -->
-            <Button Name="ResetButton" Content="[ RESET SYSTEM ]" Click="OnResetClick" 
+            <Button Name="ResetButton" Content="リセット" Click="OnResetClick" 
                     Background="#330000" BorderBrush="#FF0000" Foreground="#FF0000" 
                     HorizontalAlignment="Right" VerticalAlignment="Bottom" 
                     IsVisible="False"/>

@@ -130,7 +130,7 @@ namespace CyberAttackDemo
             if (ExecuteButton != null) ExecuteButton.IsEnabled = true;
             if (ResetButton != null) ResetButton.IsEnabled = true; // リセットボタン有効化
             
-            UpdateStatus("VULNERABILITY DETECTED. SELECT ACTION.", Brushes.Red);
+            UpdateStatus("脆弱性が検出されました。攻撃手段を選択してください。", Brushes.Red);
         }
 
         // --- フェーズ2: 攻撃実行 ---
@@ -221,7 +221,7 @@ namespace CyberAttackDemo
                 _config.Load();
                 if (TargetIpDisplay != null) TargetIpDisplay.Text = _config.TargetIp;
                 
-                UpdateStatus("WAITING FOR COMMAND", Brushes.Yellow);
+                UpdateStatus("待機中", Brushes.Yellow);
                 WriteLog("SYSTEM RESET. READY.", "system");
 
                 // リセット完了後、監視を再開
@@ -262,7 +262,7 @@ namespace CyberAttackDemo
         {
             if (StatusText != null)
             {
-                StatusText.Text = $"STATUS: {text}";
+                StatusText.Text = $"状態: {text}";
                 if (color != null) StatusText.Foreground = color;
             }
         }
