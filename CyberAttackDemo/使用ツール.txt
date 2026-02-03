@@ -1,7 +1,7 @@
 使用ツール一覧
 
 
-nmap
-hping3
-Hydra
+nmap(ポートスキャン)
+hping3(DoS攻撃)
+Hydra(SSHパスワードクラッキング)
 Curl(ディレクトリトラバーサル)
