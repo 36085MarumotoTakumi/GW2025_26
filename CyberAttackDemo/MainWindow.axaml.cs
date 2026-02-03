@@ -107,7 +107,7 @@ namespace CyberAttackDemo
         // --- フェーズ1: ポートスキャン ---
         private async void OnScanClick(object sender, RoutedEventArgs e)
         {
-            SetBusyState(true, "SCANNING NETWORK...", Brushes.Yellow);
+            SetBusyState(true, "ネットワークをスキャン中...", Brushes.Yellow);
             
             WriteLog("\n==========================================", "system");
             WriteLog($"[*] INITIATING PORT SCAN ON {_config.TargetIp}...", "system");
@@ -148,7 +148,7 @@ namespace CyberAttackDemo
         // --- DoS攻撃 ---
         private async Task RunDosAttack()
         {
-            SetBusyState(true, "EXECUTING DoS ATTACK...", Brushes.Red);
+            SetBusyState(true, "DoS攻撃を実行中...", Brushes.Red);
             WriteLog("\n==========================================", "system");
             WriteLog($"[*] INITIATING SHELL-SCRIPTED FLOOD ATTACK...", "system");
             WriteLog($"[*] DURATION LIMIT: {_config.DdosDuration} SECONDS", "system");
@@ -161,13 +161,13 @@ namespace CyberAttackDemo
             await _engine.RunCommandAsync("bash", args, _config.DdosDuration);
 
             WriteLog("\n[ATTACK STOPPED] SHELL SCRIPT TERMINATED.", "system");
-            SetBusyState(false, "READY FOR NEXT COMMAND.");
+            SetBusyState(false, "次の攻撃の準備完了");
         }
 
         // --- SSH攻撃 ---
         private async Task RunBruteForce()
         {
-            SetBusyState(true, "CRACKING PASSWORDS...", Brushes.Red);
+            SetBusyState(true, "パスワードクラック中...", Brushes.Red);
             WriteLog("\n==========================================", "system");
             WriteLog("[*] INITIATING SSH BRUTE FORCE ATTACK (Hydra)...", "system");
             WriteLog("[*] USER: root", "system");
@@ -180,13 +180,13 @@ namespace CyberAttackDemo
             await _engine.RunCommandAsync("bash", args, _config.DdosDuration + 30);
 
             WriteLog("\n[ATTACK FINISHED] HYDRA SESSION COMPLETE.", "system");
-            SetBusyState(false, "READY FOR NEXT COMMAND.");
+            SetBusyState(false, "次の攻撃の準備完了");
         }
 
         // --- ディレクトリトラバーサル ---
         private async Task RunDirectoryTraversal()
         {
-            SetBusyState(true, "EXECUTING PATH TRAVERSAL...", Brushes.Red);
+            SetBusyState(true, "ディレクトリトラバーサル攻撃を実行中...", Brushes.Red);
             WriteLog("\n==========================================", "system");
             WriteLog($"[*] INITIATING DIRECTORY TRAVERSAL ATTACK (ACTUAL)...", "system");
             WriteLog("[*] TARGET: Windows IIS / ASP.NET (Assumed)", "system");
@@ -203,7 +203,7 @@ namespace CyberAttackDemo
             await _engine.RunCommandAsync("curl", args, 10);
 
             WriteLog("\n[ATTACK FINISHED] Response received (or blocked by IDS).", "system");
-            SetBusyState(false, "READY FOR NEXT COMMAND.");
+            SetBusyState(false, "次の攻撃の準備完了");
         }
 
         // --- リセット ---
