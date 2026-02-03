@@ -118,7 +118,8 @@
             <!-- 中央: フェーズ1 (ポートスキャン) -->
             <StackPanel Name="Phase1Panel" IsVisible="True" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <Button Name="ScanButton" Content="ポートスキャンを開始" Click="OnScanClick"/>
-                <TextBlock Text="Press 'F11' to Toggle Fullscreen | 'Ctrl+Q' to Quit" FontSize="12" Foreground="Gray" HorizontalAlignment="Center" Margin="0,10,0,0"/>
+                <!-- デバッグモード用案内テキスト (Name属性追加) -->
+                <TextBlock Name="DebugInfoText" Text="Press 'F11' to Toggle Fullscreen | 'Ctrl+Q' to Quit" FontSize="12" Foreground="Gray" HorizontalAlignment="Center" Margin="0,10,0,0"/>
             </StackPanel>
 
             <!-- 中央: フェーズ2 (攻撃実行) -->

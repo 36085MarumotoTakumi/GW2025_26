@@ -67,10 +67,23 @@ namespace CyberAttackDemo
             _config.Load();
             await _engine.EnsureAttackScriptExistsAsync();
 
+            // デバッグモードの設定反映
+            // デバッグモードが無効な場合、操作説明を非表示にする
+            if (DebugInfoText != null)
+            {
+                DebugInfoText.IsVisible = _config.IsDebugMode;
+            }
+
             // 初期化ログ
             WriteLog("SYSTEM INITIALIZED.", "system");
             WriteLog($"TARGET LOCKED: {_config.TargetIp}", "system");
             WriteLog($"ATTACK TIMEOUT SET TO: {_config.DdosDuration} SECONDS", "system");
+
+            if (_config.IsDebugMode)
+            {
+                WriteLog("DEBUG MODE: ENABLED (Keys Active)", "system");
+            }
+
             WriteLog("WAITING FOR USER AUTHORIZATION...", "system");
             
             if (TargetIpDisplay != null) TargetIpDisplay.Text = _config.TargetIp;
@@ -83,6 +96,9 @@ namespace CyberAttackDemo
         {
             // ユーザーアクティビティとして処理
             OnUserActivity(sender, e);
+
+            // デバッグモードが無効の場合、管理者用ショートカットを無効化
+            if (!_config.IsDebugMode) return;
 
             if (e.KeyModifiers == KeyModifiers.Control && e.Key == Key.Q) Close();
             if (e.Key == Key.F11) ToggleFullScreen();
