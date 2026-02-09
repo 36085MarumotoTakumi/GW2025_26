@@ -77,6 +77,7 @@ namespace CyberAttackDemo
             // 初期化ログ
             WriteLog("SYSTEM INITIALIZED.", "system");
             WriteLog($"TARGET LOCKED: {_config.TargetIp}", "system");
+            WriteLog($"SSH USER: {_config.SshUser}", "system");
             WriteLog($"ATTACK TIMEOUT SET TO: {_config.DdosDuration} SECONDS", "system");
 
             if (_config.IsDebugMode)
@@ -186,13 +187,14 @@ namespace CyberAttackDemo
             SetBusyState(true, "パスワードクラック中...", Brushes.Red);
             WriteLog("\n==========================================", "system");
             WriteLog("[*] INITIATING SSH BRUTE FORCE ATTACK (Hydra)...", "system");
-            WriteLog("[*] USER: root", "system");
+            WriteLog($"[*] USER: {_config.SshUser}", "system");
             WriteLog("[*] WORDLIST: Built-in (Top 5 common passwords)", "system");
             WriteLog("==========================================", "system");
 
             await _engine.EnsureAttackScriptExistsAsync();
 
-            string args = $"{AttackEngine.AttackScriptName} {_config.TargetIp} {_config.DdosDuration} hydra";
+            // 引数にユーザー名を追加: <IP> <DURATION> hydra <USER>
+            string args = $"{AttackEngine.AttackScriptName} {_config.TargetIp} {_config.DdosDuration} hydra {_config.SshUser}";
             await _engine.RunCommandAsync("bash", args, _config.DdosDuration + 30);
 
             WriteLog("\n[ATTACK FINISHED] HYDRA SESSION COMPLETE.", "system");

