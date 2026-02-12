@@ -1,4 +1,4 @@
 IP=192.168.0.2
 DDoSTime=60
 Debug=true
-SSHUser=Demo
+SSHUser=test
