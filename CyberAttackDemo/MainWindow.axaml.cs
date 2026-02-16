@@ -94,8 +94,10 @@ namespace CyberAttackDemo
 
         private void OnKeyDown(object? sender, KeyEventArgs e)
         {
+            // ユーザーアクティビティとして処理
             OnUserActivity(sender, e);
 
+            // デバッグモードが無効の場合、管理者用ショートカットを無効化
             if (!_config.IsDebugMode) return;
 
             if (e.KeyModifiers == KeyModifiers.Control && e.Key == Key.Q) Close();
@@ -131,16 +133,18 @@ namespace CyberAttackDemo
 
             WriteLog("\n[SCAN COMPLETE] ANALYZING VULNERABILITIES...", "system");
             
+            // UI遷移
             if (Phase1Panel != null) Phase1Panel.IsVisible = false;
             if (Phase2Panel != null) Phase2Panel.IsVisible = true;
-            if (ResetButton != null) ResetButton.IsVisible = true;
+            if (ResetButton != null) ResetButton.IsVisible = true; // リセットボタンを表示
             
+            // ★ここでリセットボタン等を有効化し、ビジー状態を解除する
             _isBusy = false;
-            _inactivityTimer.Start();
+            _inactivityTimer.Start(); // タイマー再開
 
             if (AttackSelector != null) AttackSelector.IsEnabled = true;
             if (ExecuteButton != null) ExecuteButton.IsEnabled = true;
-            if (ResetButton != null) ResetButton.IsEnabled = true;
+            if (ResetButton != null) ResetButton.IsEnabled = true; // リセットボタン有効化
             
             UpdateStatus("脆弱性が検出されました。攻撃手段を選択してください。", Brushes.Red);
         }
@@ -188,6 +192,7 @@ namespace CyberAttackDemo
 
             await _engine.EnsureAttackScriptExistsAsync();
 
+            // 引数にユーザー名を追加: <IP> <DURATION> hydra <USER>
             string args = $"{AttackEngine.AttackScriptName} {_config.TargetIp} {_config.DdosDuration} hydra {_config.SshUser}";
             await _engine.RunCommandAsync("bash", args, _config.DdosDuration + 30);
 
@@ -205,18 +210,22 @@ namespace CyberAttackDemo
             WriteLog("[*] PAYLOAD: vuln.aspx?file=../../Windows/System32/drivers/etc/hosts", "system");
             WriteLog("==========================================", "system");
 
-            // 初心者向けの解説ログを追加
-            WriteLog("\n[解説] ディレクトリトラバーサルとは？", "system");
-            WriteLog("Webサーバーの公開フォルダから '../' (親ディレクトリへ移動) を繰り返すことで、", "system");
-            WriteLog("本来アクセスできないシステム内部のファイル(今回は 'hosts')を不正に閲覧する攻撃です。", "system");
-            WriteLog("------------------------------------------\n", "system");
-
+            // 指定された攻撃URLに変更
+            // http://<IP>/vuln.aspx?file=../../Windows/System32/drivers/etc/hosts
             string targetUrl = $"http://{_config.TargetIp}/vuln.aspx?file=../../Windows/System32/drivers/etc/hosts";
             string args = $"--path-as-is -v --max-time 5 \"{targetUrl}\"";
             
             WriteLog($"[*] Executing: curl {args}", "system");
             
             await _engine.RunCommandAsync("curl", args, 10);
+
+            // 初心者向けの解説ログを実行後に移動
+            WriteLog("\n------------------------------------------", "system");
+            WriteLog("[解説] ディレクトリトラバーサルとは？", "system");
+            WriteLog("Webサーバーの公開フォルダから '../' (親ディレクトリへ移動) を繰り返すことで、", "system");
+            WriteLog("本来アクセスできないシステム内部のファイル(今回は 'hosts')を不正に閲覧する攻撃です。", "system");
+            WriteLog("成功すると、上記のようにファイルの中身が表示されます。", "system");
+            WriteLog("------------------------------------------\n", "system");
 
             WriteLog("\n[ATTACK FINISHED] Response received (or blocked by IDS).", "system");
             SetBusyState(false, "次の攻撃の準備完了");
@@ -225,8 +234,10 @@ namespace CyberAttackDemo
         // --- リセット ---
         private void OnResetClick(object sender, RoutedEventArgs e)
         {
+            // UIスレッドで実行（タイマーから呼ばれた場合のため）
             Dispatcher.UIThread.Post(() => 
             {
+                // ログコンテナの中身をクリア
                 if (LogContainer != null) LogContainer.Children.Clear();
                 
                 if (Phase2Panel != null) Phase2Panel.IsVisible = false;
@@ -240,6 +251,7 @@ namespace CyberAttackDemo
                 UpdateStatus("待機中", Brushes.Yellow);
                 WriteLog("SYSTEM RESET. READY.", "system");
 
+                // リセット完了後、監視を再開
                 _isBusy = false;
                 _inactivityTimer.Start();
             });
@@ -252,6 +264,7 @@ namespace CyberAttackDemo
 
             if (isBusy)
             {
+                // 攻撃中は自動リセットタイマーを停止
                 _inactivityTimer.Stop();
 
                 if (ScanButton != null) ScanButton.IsEnabled = false;
@@ -261,6 +274,7 @@ namespace CyberAttackDemo
             }
             else
             {
+                // 攻撃終了後はタイマー再開
                 _inactivityTimer.Start();
 
                 if (ScanButton != null) ScanButton.IsEnabled = true;
