@@ -294,6 +294,7 @@ namespace CyberAttackDemo
 
             var textBlock = new TextBlock
             {
+                Text = message,
                 FontFamily = "Monospace",
                 TextWrapping = TextWrapping.Wrap,
                 FontSize = 16,
@@ -303,46 +304,22 @@ namespace CyberAttackDemo
             if (forceType == "system")
             {
                 textBlock.Foreground = Brushes.Lime;
-                textBlock.Text = message;
             }
-            // --- パスワード発見行のハイライト処理 ---
-            else if (message.Contains("password:") && !message.Contains("[ATTEMPT]") && !message.Contains("login tries"))
-            {
-                int passIndex = message.IndexOf("password:");
-                string beforePass = message.Substring(0, passIndex + 9);
-                string passValue = message.Substring(passIndex + 9);
-
-                // パスワードの値をシアン色(水色)かつ太字で強調
-                textBlock.Inlines?.Add(new Avalonia.Controls.Documents.Run { Text = beforePass, Foreground = Brushes.Lime });
-                textBlock.Inlines?.Add(new Avalonia.Controls.Documents.Run { Text = passValue, Foreground = Brushes.Cyan, FontWeight = FontWeight.Bold });
-            }
-            else if (message.Contains("valid password found"))
-            {
-                textBlock.Foreground = Brushes.Cyan;
-                textBlock.FontWeight = FontWeight.Bold;
-                textBlock.Text = message;
-            }
-            // ----------------------------------------
             else if (message.Contains("[STDERR]") || message.Contains("ERROR") || message.Contains("Failed"))
             {
                 textBlock.Foreground = Brushes.Red;
-                textBlock.Text = message;
             }
             else if (message.StartsWith("[*]") || message.StartsWith("[+]") || message.Contains("[発見]") || message.Contains("Process") || message.Contains("Vector"))
             {
                 textBlock.Foreground = Brushes.Lime;
-                textBlock.Text = message;
             }
-            else if (message.StartsWith("<") || message.StartsWith(">") || message.Contains("HPING") || message.Contains("[ATTEMPT]"))
+            else if (message.StartsWith("<") || message.StartsWith(">") || message.Contains("HPING"))
             {
-                // 大量に出る試行ログ(ATTEMPT)や通信ログは目立たないグレーにする
-                textBlock.Foreground = Brushes.Gray;
-                textBlock.Text = message;
+                textBlock.Foreground = Brushes.LightGray;
             }
             else
             {
                 textBlock.Foreground = Brushes.WhiteSmoke;
-                textBlock.Text = message;
             }
 
             LogContainer.Children.Add(textBlock);
