@@ -68,7 +68,6 @@ namespace CyberAttackDemo
             await _engine.EnsureAttackScriptExistsAsync();
 
             // デバッグモードの設定反映
-            // デバッグモードが無効な場合、操作説明を非表示にする
             if (DebugInfoText != null)
             {
                 DebugInfoText.IsVisible = _config.IsDebugMode;
@@ -95,10 +94,8 @@ namespace CyberAttackDemo
 
         private void OnKeyDown(object? sender, KeyEventArgs e)
         {
-            // ユーザーアクティビティとして処理
             OnUserActivity(sender, e);
 
-            // デバッグモードが無効の場合、管理者用ショートカットを無効化
             if (!_config.IsDebugMode) return;
 
             if (e.KeyModifiers == KeyModifiers.Control && e.Key == Key.Q) Close();
@@ -134,18 +131,16 @@ namespace CyberAttackDemo
 
             WriteLog("\n[SCAN COMPLETE] ANALYZING VULNERABILITIES...", "system");
             
-            // UI遷移
             if (Phase1Panel != null) Phase1Panel.IsVisible = false;
             if (Phase2Panel != null) Phase2Panel.IsVisible = true;
-            if (ResetButton != null) ResetButton.IsVisible = true; // リセットボタンを表示
+            if (ResetButton != null) ResetButton.IsVisible = true;
             
-            // ★ここでリセットボタン等を有効化し、ビジー状態を解除する
             _isBusy = false;
-            _inactivityTimer.Start(); // タイマー再開
+            _inactivityTimer.Start();
 
             if (AttackSelector != null) AttackSelector.IsEnabled = true;
             if (ExecuteButton != null) ExecuteButton.IsEnabled = true;
-            if (ResetButton != null) ResetButton.IsEnabled = true; // リセットボタン有効化
+            if (ResetButton != null) ResetButton.IsEnabled = true;
             
             UpdateStatus("脆弱性が検出されました。攻撃手段を選択してください。", Brushes.Red);
         }
@@ -193,7 +188,6 @@ namespace CyberAttackDemo
 
             await _engine.EnsureAttackScriptExistsAsync();
 
-            // 引数にユーザー名を追加: <IP> <DURATION> hydra <USER>
             string args = $"{AttackEngine.AttackScriptName} {_config.TargetIp} {_config.DdosDuration} hydra {_config.SshUser}";
             await _engine.RunCommandAsync("bash", args, _config.DdosDuration + 30);
 
@@ -211,8 +205,12 @@ namespace CyberAttackDemo
             WriteLog("[*] PAYLOAD: vuln.aspx?file=../../Windows/System32/drivers/etc/hosts", "system");
             WriteLog("==========================================", "system");
 
-            // 指定された攻撃URLに変更
-            // http://<IP>/vuln.aspx?file=../../Windows/System32/drivers/etc/hosts
+            // 初心者向けの解説ログを追加
+            WriteLog("\n[解説] ディレクトリトラバーサルとは？", "system");
+            WriteLog("Webサーバーの公開フォルダから '../' (親ディレクトリへ移動) を繰り返すことで、", "system");
+            WriteLog("本来アクセスできないシステム内部のファイル(今回は 'hosts')を不正に閲覧する攻撃です。", "system");
+            WriteLog("------------------------------------------\n", "system");
+
             string targetUrl = $"http://{_config.TargetIp}/vuln.aspx?file=../../Windows/System32/drivers/etc/hosts";
             string args = $"--path-as-is -v --max-time 5 \"{targetUrl}\"";
             
@@ -227,10 +225,8 @@ namespace CyberAttackDemo
         // --- リセット ---
         private void OnResetClick(object sender, RoutedEventArgs e)
         {
-            // UIスレッドで実行（タイマーから呼ばれた場合のため）
             Dispatcher.UIThread.Post(() => 
             {
-                // ログコンテナの中身をクリア
                 if (LogContainer != null) LogContainer.Children.Clear();
                 
                 if (Phase2Panel != null) Phase2Panel.IsVisible = false;
@@ -244,7 +240,6 @@ namespace CyberAttackDemo
                 UpdateStatus("待機中", Brushes.Yellow);
                 WriteLog("SYSTEM RESET. READY.", "system");
 
-                // リセット完了後、監視を再開
                 _isBusy = false;
                 _inactivityTimer.Start();
             });
@@ -257,7 +252,6 @@ namespace CyberAttackDemo
 
             if (isBusy)
             {
-                // 攻撃中は自動リセットタイマーを停止
                 _inactivityTimer.Stop();
 
                 if (ScanButton != null) ScanButton.IsEnabled = false;
@@ -267,7 +261,6 @@ namespace CyberAttackDemo
             }
             else
             {
-                // 攻撃終了後はタイマー再開
                 _inactivityTimer.Start();
 
                 if (ScanButton != null) ScanButton.IsEnabled = true;
@@ -294,32 +287,66 @@ namespace CyberAttackDemo
 
             var textBlock = new TextBlock
             {
-                Text = message,
                 FontFamily = "Monospace",
                 TextWrapping = TextWrapping.Wrap,
                 FontSize = 16,
                 Margin = new Thickness(0, 1, 0, 1)
             };
 
+            // 1. システムメッセージ
             if (forceType == "system")
             {
                 textBlock.Foreground = Brushes.Lime;
+                textBlock.Text = message;
             }
-            else if (message.Contains("[STDERR]") || message.Contains("ERROR") || message.Contains("Failed"))
+            // 2. パスワード発見行のハイライト処理
+            else if (message.Contains("password:") && !message.Contains("[ATTEMPT]") && !message.Contains("login tries") && !message.Contains("[試行中]"))
+            {
+                int passIndex = message.IndexOf("password:");
+                if (passIndex >= 0 && passIndex + 9 < message.Length)
+                {
+                    string beforePass = message.Substring(0, passIndex + 9);
+                    string passValue = message.Substring(passIndex + 9);
+
+                    textBlock.Inlines?.Add(new Avalonia.Controls.Documents.Run { Text = beforePass, Foreground = Brushes.Lime });
+                    textBlock.Inlines?.Add(new Avalonia.Controls.Documents.Run { Text = passValue, Foreground = Brushes.Cyan, FontWeight = FontWeight.Bold });
+                }
+                else
+                {
+                    textBlock.Foreground = Brushes.Lime;
+                    textBlock.Text = message;
+                }
+            }
+            // 3. 成功メッセージ
+            else if (message.Contains("valid password found") || message.Contains("[成功]"))
+            {
+                textBlock.Foreground = Brushes.Cyan;
+                textBlock.FontWeight = FontWeight.Bold;
+                textBlock.Text = message;
+            }
+            // 4. エラーまたは失敗
+            else if (message.Contains("[STDERR]") || message.Contains("ERROR") || message.Contains("Failed") || message.Contains("[失敗]"))
             {
                 textBlock.Foreground = Brushes.Red;
+                textBlock.Text = message;
             }
+            // 5. 通常の成功/進行メッセージ
             else if (message.StartsWith("[*]") || message.StartsWith("[+]") || message.Contains("[発見]") || message.Contains("Process") || message.Contains("Vector"))
             {
                 textBlock.Foreground = Brushes.Lime;
+                textBlock.Text = message;
             }
-            else if (message.StartsWith("<") || message.StartsWith(">") || message.Contains("HPING"))
+            // 6. 通信ログや試行ログ（目立たなくする）
+            else if (message.StartsWith("<") || message.StartsWith(">") || message.Contains("HPING") || message.Contains("[ATTEMPT]"))
             {
-                textBlock.Foreground = Brushes.LightGray;
+                textBlock.Foreground = Brushes.Gray;
+                textBlock.Text = message;
             }
+            // 7. その他
             else
             {
                 textBlock.Foreground = Brushes.WhiteSmoke;
+                textBlock.Text = message;
             }
 
             LogContainer.Children.Add(textBlock);
