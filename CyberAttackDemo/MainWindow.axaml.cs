@@ -174,7 +174,9 @@ namespace CyberAttackDemo
             await _engine.EnsureAttackScriptExistsAsync();
 
             string args = $"{AttackEngine.AttackScriptName} {_config.TargetIp} {_config.DdosDuration} dos";
-            await _engine.RunCommandAsync("bash", args, _config.DdosDuration);
+            
+            // カウントダウン付きで実行
+            await RunCommandWithCountdown("bash", args, _config.DdosDuration);
 
             WriteLog("\n[ATTACK STOPPED] SHELL SCRIPT TERMINATED.", "system");
             SetBusyState(false, "次の攻撃の準備完了");
@@ -194,7 +196,10 @@ namespace CyberAttackDemo
 
             // 引数にユーザー名を追加: <IP> <DURATION> hydra <USER>
             string args = $"{AttackEngine.AttackScriptName} {_config.TargetIp} {_config.DdosDuration} hydra {_config.SshUser}";
-            await _engine.RunCommandAsync("bash", args, _config.DdosDuration + 30);
+            
+            // Hydraは完了まで待つが、万が一のために設定時間+αで強制終了
+            // カウントダウン付きで実行
+            await RunCommandWithCountdown("bash", args, _config.DdosDuration + 30);
 
             WriteLog("\n[ATTACK FINISHED] HYDRA SESSION COMPLETE.", "system");
             SetBusyState(false, "次の攻撃の準備完了");
@@ -229,6 +234,58 @@ namespace CyberAttackDemo
 
             WriteLog("\n[ATTACK FINISHED] Response received (or blocked by IDS).", "system");
             SetBusyState(false, "次の攻撃の準備完了");
+        }
+
+        // --- 実行ボタンのカウントダウン制御付きコマンド実行 ---
+        private async Task RunCommandWithCountdown(string command, string args, int timeoutSeconds)
+        {
+            string originalText = "[実行]";
+            if (ExecuteButton?.Content != null) originalText = ExecuteButton.Content.ToString()!;
+
+            // タイマーキャンセル用のトークン
+            using var cts = new System.Threading.CancellationTokenSource();
+
+            // カウントダウンタスク（バックグラウンドで実行）
+            var countdownTask = Task.Run(async () =>
+            {
+                int remaining = timeoutSeconds;
+                while (remaining > 0)
+                {
+                    // 処理がキャンセルされていたらループを抜ける
+                    if (cts.Token.IsCancellationRequested) break;
+
+                    // UI更新 (ボタンのテキストを変更)
+                    Dispatcher.UIThread.Post(() => 
+                    {
+                        if (ExecuteButton != null) ExecuteButton.Content = $"残り {remaining} 秒";
+                    });
+
+                    try 
+                    {
+                        await Task.Delay(1000, cts.Token);
+                    }
+                    catch (TaskCanceledException) { break; }
+                    
+                    remaining--;
+                }
+            });
+
+            try
+            {
+                // コマンド実行（完了またはタイムアウトまで待機）
+                await _engine.RunCommandAsync(command, args, timeoutSeconds);
+            }
+            finally
+            {
+                // コマンド終了後、カウントダウンを停止
+                cts.Cancel();
+                
+                // ボタンのテキストを元に戻す
+                Dispatcher.UIThread.Post(() => 
+                {
+                    if (ExecuteButton != null) ExecuteButton.Content = originalText;
+                });
+            }
         }
 
         // --- リセット ---
