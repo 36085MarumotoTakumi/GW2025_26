@@ -67,23 +67,10 @@ namespace CyberAttackDemo
             _config.Load();
             await _engine.EnsureAttackScriptExistsAsync();
 
-            // デバッグモードの設定反映
-            if (DebugInfoText != null)
-            {
-                DebugInfoText.IsVisible = _config.IsDebugMode;
-            }
-
-            // 初期化ログ
             WriteLog("SYSTEM INITIALIZED.", "system");
             WriteLog($"TARGET LOCKED: {_config.TargetIp}", "system");
             WriteLog($"SSH USER: {_config.SshUser}", "system");
             WriteLog($"ATTACK TIMEOUT SET TO: {_config.DdosDuration} SECONDS", "system");
-
-            if (_config.IsDebugMode)
-            {
-                WriteLog("DEBUG MODE: ENABLED (Keys Active)", "system");
-            }
-
             WriteLog("WAITING FOR USER AUTHORIZATION...", "system");
             
             if (TargetIpDisplay != null) TargetIpDisplay.Text = _config.TargetIp;
@@ -96,9 +83,6 @@ namespace CyberAttackDemo
         {
             // ユーザーアクティビティとして処理
             OnUserActivity(sender, e);
-
-            // デバッグモードが無効の場合、管理者用ショートカットを無効化
-            if (!_config.IsDebugMode) return;
 
             if (e.KeyModifiers == KeyModifiers.Control && e.Key == Key.Q) Close();
             if (e.Key == Key.F11) ToggleFullScreen();
@@ -174,16 +158,7 @@ namespace CyberAttackDemo
             await _engine.EnsureAttackScriptExistsAsync();
 
             string args = $"{AttackEngine.AttackScriptName} {_config.TargetIp} {_config.DdosDuration} dos";
-            
-            // カウントダウン付きで実行
-            await RunCommandWithCountdown("bash", args, _config.DdosDuration);
-
-            // 解説を追加
-            WriteLog("\n------------------------------------------", "system");
-            WriteLog("[解説] DoS攻撃 (Denial of Service) とは？", "system");
-            WriteLog("ターゲットに対して大量のデータ(パケット)を送りつけ、処理能力や通信帯域を", "system");
-            WriteLog("パンクさせることで、サービスを利用不能にする攻撃です。", "system");
-            WriteLog("------------------------------------------\n", "system");
+            await _engine.RunCommandAsync("bash", args);
 
             WriteLog("\n[ATTACK STOPPED] SHELL SCRIPT TERMINATED.", "system");
             SetBusyState(false, "次の攻撃の準備完了");
@@ -203,17 +178,7 @@ namespace CyberAttackDemo
 
             // 引数にユーザー名を追加: <IP> <DURATION> hydra <USER>
             string args = $"{AttackEngine.AttackScriptName} {_config.TargetIp} {_config.DdosDuration} hydra {_config.SshUser}";
-            
-            // Hydraは完了まで待つが、万が一のために設定時間+αで強制終了
-            // カウントダウン付きで実行
-            await RunCommandWithCountdown("bash", args, _config.DdosDuration + 30);
-
-            // 解説を追加
-            WriteLog("\n------------------------------------------", "system");
-            WriteLog("[解説] SSHパスワードクラック (Brute Force) とは？", "system");
-            WriteLog("ユーザー名とパスワードの組み合わせを辞書(リスト)から次々と試し、", "system");
-            WriteLog("ログイン可能な認証情報を力ずくで割り出す攻撃です。", "system");
-            WriteLog("------------------------------------------\n", "system");
+            await _engine.RunCommandAsync("bash", args);
 
             WriteLog("\n[ATTACK FINISHED] HYDRA SESSION COMPLETE.", "system");
             SetBusyState(false, "次の攻撃の準備完了");
@@ -236,70 +201,10 @@ namespace CyberAttackDemo
             
             WriteLog($"[*] Executing: curl {args}", "system");
             
-            await _engine.RunCommandAsync("curl", args, 10);
-
-            // 初心者向けの解説ログを実行後に移動
-            WriteLog("\n------------------------------------------", "system");
-            WriteLog("[解説] ディレクトリトラバーサルとは？", "system");
-            WriteLog("Webサーバーの公開フォルダから '../' (親ディレクトリへ移動) を繰り返すことで、", "system");
-            WriteLog("本来アクセスできないシステム内部のファイル(今回は 'hosts')を不正に閲覧する攻撃です。", "system");
-            WriteLog("成功すると、上記のようにファイルの中身が表示されます。", "system");
-            WriteLog("------------------------------------------\n", "system");
+            await _engine.RunCommandAsync("curl", args);
 
             WriteLog("\n[ATTACK FINISHED] Response received (or blocked by IDS).", "system");
             SetBusyState(false, "次の攻撃の準備完了");
-        }
-
-        // --- 実行ボタンのカウントダウン制御付きコマンド実行 ---
-        private async Task RunCommandWithCountdown(string command, string args, int timeoutSeconds)
-        {
-            string originalText = "[実行]";
-            if (ExecuteButton?.Content != null) originalText = ExecuteButton.Content.ToString()!;
-
-            // タイマーキャンセル用のトークン
-            using var cts = new System.Threading.CancellationTokenSource();
-
-            // カウントダウンタスク（バックグラウンドで実行）
-            var countdownTask = Task.Run(async () =>
-            {
-                int remaining = timeoutSeconds;
-                while (remaining > 0)
-                {
-                    // 処理がキャンセルされていたらループを抜ける
-                    if (cts.Token.IsCancellationRequested) break;
-
-                    // UI更新 (ボタンのテキストを変更)
-                    Dispatcher.UIThread.Post(() => 
-                    {
-                        if (ExecuteButton != null) ExecuteButton.Content = $"残り {remaining} 秒";
-                    });
-
-                    try 
-                    {
-                        await Task.Delay(1000, cts.Token);
-                    }
-                    catch (TaskCanceledException) { break; }
-                    
-                    remaining--;
-                }
-            });
-
-            try
-            {
-                // コマンド実行（完了またはタイムアウトまで待機）
-                await _engine.RunCommandAsync(command, args, timeoutSeconds);
-            }
-            finally
-            {
-                // コマンド終了後、カウントダウンを停止
-                cts.Cancel();
-                
-                // ボタンのテキストを元に戻す
-                Dispatcher.UIThread.Post(() => 
-                {
-                    if (ExecuteButton != null) ExecuteButton.Content = originalText;
-                });
-            }
         }
 
         // --- リセット ---
@@ -372,6 +277,7 @@ namespace CyberAttackDemo
 
             var textBlock = new TextBlock
             {
+                // Text = message, // ★ここでの一括設定を削除し、条件分岐内で設定またはInlinesを使用
                 FontFamily = "Monospace",
                 TextWrapping = TextWrapping.Wrap,
                 FontSize = 16,
@@ -385,6 +291,7 @@ namespace CyberAttackDemo
                 textBlock.Text = message;
             }
             // 2. パスワード発見行のハイライト処理
+            //    条件: "password:"を含み、かつ試行中ログではない場合
             else if (message.Contains("password:") && !message.Contains("[ATTEMPT]") && !message.Contains("login tries") && !message.Contains("[試行中]"))
             {
                 int passIndex = message.IndexOf("password:");
@@ -393,6 +300,7 @@ namespace CyberAttackDemo
                     string beforePass = message.Substring(0, passIndex + 9);
                     string passValue = message.Substring(passIndex + 9);
 
+                    // パスワードの値をシアン色(水色)かつ太字で強調
                     textBlock.Inlines?.Add(new Avalonia.Controls.Documents.Run { Text = beforePass, Foreground = Brushes.Lime });
                     textBlock.Inlines?.Add(new Avalonia.Controls.Documents.Run { Text = passValue, Foreground = Brushes.Cyan, FontWeight = FontWeight.Bold });
                 }
