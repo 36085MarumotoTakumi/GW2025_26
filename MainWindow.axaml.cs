@@ -1,0 +1,352 @@
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.Threading;
+using Avalonia.Media; // ブラシ（色）を使用するために必要
+using CyberAttackDemo;
+using System;
+using System.Threading.Tasks;
+
+namespace CyberAttackDemo
+{
+    public partial class MainWindow : Window
+    {
+        private readonly ConfigManager _config;
+        private readonly AttackEngine _engine;
+        
+        // 30秒無操作リセット用のタイマー
+        private readonly DispatcherTimer _inactivityTimer;
+        // 攻撃実行中などを判定するフラグ
+        private bool _isBusy = false;
+
+        public MainWindow()
+        {
+            InitializeComponent();
+            
+            _config = new ConfigManager();
+            _engine = new AttackEngine();
+
+            // エンジンからのログを受け取って画面に表示
+            _engine.OnLogReceived += msg => Dispatcher.UIThread.Post(() => WriteLog(msg));
+
+            this.KeyDown += OnKeyDown;
+            this.Opened += OnWindowOpened;
+
+            // --- 自動リセットタイマーの設定 ---
+            _inactivityTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(30) // 30秒
+            };
+            _inactivityTimer.Tick += (s, e) => 
+            {
+                // タイマー発火時にリセット実行（念のため一回止める）
+                _inactivityTimer.Stop();
+                OnResetClick(this, new RoutedEventArgs());
+            };
+
+            // ユーザー操作を監視してタイマーをリセットするイベント
+            this.PointerMoved += OnUserActivity;
+            this.Tapped += OnUserActivity;
+            // KeyDownは既存のハンドラ内で処理
+        }
+
+        // ユーザーの操作があったらタイマーをリセット（延長）する
+        private void OnUserActivity(object? sender, EventArgs e)
+        {
+            // 攻撃中（ビジー）でなければタイマーを再始動
+            if (!_isBusy)
+            {
+                _inactivityTimer.Stop();
+                _inactivityTimer.Start();
+            }
+        }
+
+        private async void OnWindowOpened(object? sender, EventArgs e)
+        {
+            _config.Load();
+            await _engine.EnsureAttackScriptExistsAsync();
+
+            // デバッグモードの設定反映
+            // デバッグモードが無効な場合、操作説明を非表示にする
+            if (DebugInfoText != null)
+            {
+                DebugInfoText.IsVisible = _config.IsDebugMode;
+            }
+
+            // 初期化ログ
+            WriteLog("SYSTEM INITIALIZED.", "system");
+            WriteLog($"TARGET LOCKED: {_config.TargetIp}", "system");
+            WriteLog($"SSH USER: {_config.SshUser}", "system");
+            WriteLog($"ATTACK TIMEOUT SET TO: {_config.DdosDuration} SECONDS", "system");
+
+            if (_config.IsDebugMode)
+            {
+                WriteLog("DEBUG MODE: ENABLED (Keys Active)", "system");
+            }
+
+            WriteLog("WAITING FOR USER AUTHORIZATION...", "system");
+            
+            if (TargetIpDisplay != null) TargetIpDisplay.Text = _config.TargetIp;
+
+            // 監視開始
+            _inactivityTimer.Start();
+        }
+
+        private void OnKeyDown(object? sender, KeyEventArgs e)
+        {
+            // ユーザーアクティビティとして処理
+            OnUserActivity(sender, e);
+
+            // デバッグモードが無効の場合、管理者用ショートカットを無効化
+            if (!_config.IsDebugMode) return;
+
+            if (e.KeyModifiers == KeyModifiers.Control && e.Key == Key.Q) Close();
+            if (e.Key == Key.F11) ToggleFullScreen();
+        }
+
+        private void ToggleFullScreen()
+        {
+            if (WindowState == WindowState.FullScreen)
+            {
+                WindowState = WindowState.Normal;
+                SystemDecorations = SystemDecorations.Full;
+                Topmost = false;
+            }
+            else
+            {
+                WindowState = WindowState.FullScreen;
+                SystemDecorations = SystemDecorations.None;
+                Topmost = true;
+            }
+        }
+
+        // --- フェーズ1: ポートスキャン ---
+        private async void OnScanClick(object sender, RoutedEventArgs e)
+        {
+            SetBusyState(true, "ネットワークをスキャン中...", Brushes.Yellow);
+            
+            WriteLog("\n==========================================", "system");
+            WriteLog($"[*] INITIATING PORT SCAN ON {_config.TargetIp}...", "system");
+            WriteLog("==========================================", "system");
+
+            await _engine.RunCommandAsync("nmap", $"-F -sV {_config.TargetIp}");
+
+            WriteLog("\n[SCAN COMPLETE] ANALYZING VULNERABILITIES...", "system");
+            
+            // UI遷移
+            if (Phase1Panel != null) Phase1Panel.IsVisible = false;
+            if (Phase2Panel != null) Phase2Panel.IsVisible = true;
+            if (ResetButton != null) ResetButton.IsVisible = true; // リセットボタンを表示
+            
+            // ★ここでリセットボタン等を有効化し、ビジー状態を解除する
+            _isBusy = false;
+            _inactivityTimer.Start(); // タイマー再開
+
+            if (AttackSelector != null) AttackSelector.IsEnabled = true;
+            if (ExecuteButton != null) ExecuteButton.IsEnabled = true;
+            if (ResetButton != null) ResetButton.IsEnabled = true; // リセットボタン有効化
+            
+            UpdateStatus("脆弱性が検出されました。攻撃手段を選択してください。", Brushes.Red);
+        }
+
+        // --- フェーズ2: 攻撃実行 ---
+        private async void OnExecuteClick(object sender, RoutedEventArgs e)
+        {
+            if (AttackSelector == null) return;
+
+            int selectedIndex = AttackSelector.SelectedIndex;
+
+            if (selectedIndex == 0) await RunDosAttack();
+            else if (selectedIndex == 1) await RunBruteForce();
+            else if (selectedIndex == 2) await RunDirectoryTraversal();
+        }
+
+        // --- DoS攻撃 ---
+        private async Task RunDosAttack()
+        {
+            SetBusyState(true, "DoS攻撃を実行中...", Brushes.Red);
+            WriteLog("\n==========================================", "system");
+            WriteLog($"[*] INITIATING SHELL-SCRIPTED FLOOD ATTACK...", "system");
+            WriteLog($"[*] DURATION LIMIT: {_config.DdosDuration} SECONDS", "system");
+            WriteLog("[!] WARNING: EXTREME NETWORK LOAD.", "system");
+            WriteLog("==========================================", "system");
+
+            await _engine.EnsureAttackScriptExistsAsync();
+
+            string args = $"{AttackEngine.AttackScriptName} {_config.TargetIp} {_config.DdosDuration} dos";
+            await _engine.RunCommandAsync("bash", args, _config.DdosDuration);
+
+            WriteLog("\n[ATTACK STOPPED] SHELL SCRIPT TERMINATED.", "system");
+            SetBusyState(false, "次の攻撃の準備完了");
+        }
+
+        // --- SSH攻撃 ---
+        private async Task RunBruteForce()
+        {
+            SetBusyState(true, "パスワードクラック中...", Brushes.Red);
+            WriteLog("\n==========================================", "system");
+            WriteLog("[*] INITIATING SSH BRUTE FORCE ATTACK (Hydra)...", "system");
+            WriteLog($"[*] USER: {_config.SshUser}", "system");
+            WriteLog("[*] WORDLIST: Built-in (Top 5 common passwords)", "system");
+            WriteLog("==========================================", "system");
+
+            await _engine.EnsureAttackScriptExistsAsync();
+
+            // 引数にユーザー名を追加: <IP> <DURATION> hydra <USER>
+            string args = $"{AttackEngine.AttackScriptName} {_config.TargetIp} {_config.DdosDuration} hydra {_config.SshUser}";
+            await _engine.RunCommandAsync("bash", args, _config.DdosDuration + 30);
+
+            WriteLog("\n[ATTACK FINISHED] HYDRA SESSION COMPLETE.", "system");
+            SetBusyState(false, "次の攻撃の準備完了");
+        }
+
+        // --- ディレクトリトラバーサル ---
+        private async Task RunDirectoryTraversal()
+        {
+            SetBusyState(true, "ディレクトリトラバーサル攻撃を実行中...", Brushes.Red);
+            WriteLog("\n==========================================", "system");
+            WriteLog($"[*] INITIATING DIRECTORY TRAVERSAL ATTACK (ACTUAL)...", "system");
+            WriteLog("[*] TARGET: Windows IIS / ASP.NET (Assumed)", "system");
+            WriteLog("[*] PAYLOAD: vuln.aspx?file=../../Windows/System32/drivers/etc/hosts", "system");
+            WriteLog("==========================================", "system");
+
+            // 指定された攻撃URLに変更
+            // http://<IP>/vuln.aspx?file=../../Windows/System32/drivers/etc/hosts
+            string targetUrl = $"http://{_config.TargetIp}/vuln.aspx?file=../../Windows/System32/drivers/etc/hosts";
+            string args = $"--path-as-is -v --max-time 5 \"{targetUrl}\"";
+            
+            WriteLog($"[*] Executing: curl {args}", "system");
+            
+            await _engine.RunCommandAsync("curl", args, 10);
+
+            WriteLog("\n[ATTACK FINISHED] Response received (or blocked by IDS).", "system");
+            SetBusyState(false, "次の攻撃の準備完了");
+        }
+
+        // --- リセット ---
+        private void OnResetClick(object sender, RoutedEventArgs e)
+        {
+            // UIスレッドで実行（タイマーから呼ばれた場合のため）
+            Dispatcher.UIThread.Post(() => 
+            {
+                // ログコンテナの中身をクリア
+                if (LogContainer != null) LogContainer.Children.Clear();
+                
+                if (Phase2Panel != null) Phase2Panel.IsVisible = false;
+                if (Phase1Panel != null) Phase1Panel.IsVisible = true;
+                if (ResetButton != null) ResetButton.IsVisible = false; 
+                if (ScanButton != null) ScanButton.IsEnabled = true;
+                
+                _config.Load();
+                if (TargetIpDisplay != null) TargetIpDisplay.Text = _config.TargetIp;
+                
+                UpdateStatus("待機中", Brushes.Yellow);
+                WriteLog("SYSTEM RESET. READY.", "system");
+
+                // リセット完了後、監視を再開
+                _isBusy = false;
+                _inactivityTimer.Start();
+            });
+        }
+
+        // --- UI Helper Methods ---
+        private void SetBusyState(bool isBusy, string statusText, IBrush? color = null)
+        {
+            _isBusy = isBusy;
+
+            if (isBusy)
+            {
+                // 攻撃中は自動リセットタイマーを停止
+                _inactivityTimer.Stop();
+
+                if (ScanButton != null) ScanButton.IsEnabled = false;
+                if (ExecuteButton != null) ExecuteButton.IsEnabled = false;
+                if (AttackSelector != null) AttackSelector.IsEnabled = false;
+                if (ResetButton != null) ResetButton.IsEnabled = false;
+            }
+            else
+            {
+                // 攻撃終了後はタイマー再開
+                _inactivityTimer.Start();
+
+                if (ScanButton != null) ScanButton.IsEnabled = true;
+                if (ExecuteButton != null) ExecuteButton.IsEnabled = true;
+                if (AttackSelector != null) AttackSelector.IsEnabled = true;
+                if (ResetButton != null) ResetButton.IsEnabled = true;
+            }
+            UpdateStatus(statusText, color);
+        }
+
+        private void UpdateStatus(string text, IBrush? color = null)
+        {
+            if (StatusText != null)
+            {
+                StatusText.Text = $"状態: {text}";
+                if (color != null) StatusText.Foreground = color;
+            }
+        }
+
+        // 色付きログ出力ロジック
+        private void WriteLog(string message, string forceType = "")
+        {
+            if (LogContainer == null || LogScrollViewer == null) return;
+
+            var textBlock = new TextBlock
+            {
+                FontFamily = "Monospace",
+                TextWrapping = TextWrapping.Wrap,
+                FontSize = 16,
+                Margin = new Thickness(0, 1, 0, 1)
+            };
+
+            if (forceType == "system")
+            {
+                textBlock.Foreground = Brushes.Lime;
+                textBlock.Text = message;
+            }
+            // --- パスワード発見行のハイライト処理 ---
+            else if (message.Contains("password:") && !message.Contains("[ATTEMPT]") && !message.Contains("login tries"))
+            {
+                int passIndex = message.IndexOf("password:");
+                string beforePass = message.Substring(0, passIndex + 9);
+                string passValue = message.Substring(passIndex + 9);
+
+                // パスワードの値をシアン色(水色)かつ太字で強調
+                textBlock.Inlines?.Add(new Avalonia.Controls.Documents.Run { Text = beforePass, Foreground = Brushes.Lime });
+                textBlock.Inlines?.Add(new Avalonia.Controls.Documents.Run { Text = passValue, Foreground = Brushes.Cyan, FontWeight = FontWeight.Bold });
+            }
+            else if (message.Contains("valid password found"))
+            {
+                textBlock.Foreground = Brushes.Cyan;
+                textBlock.FontWeight = FontWeight.Bold;
+                textBlock.Text = message;
+            }
+            // ----------------------------------------
+            else if (message.Contains("[STDERR]") || message.Contains("ERROR") || message.Contains("Failed"))
+            {
+                textBlock.Foreground = Brushes.Red;
+                textBlock.Text = message;
+            }
+            else if (message.StartsWith("[*]") || message.StartsWith("[+]") || message.Contains("[発見]") || message.Contains("Process") || message.Contains("Vector"))
+            {
+                textBlock.Foreground = Brushes.Lime;
+                textBlock.Text = message;
+            }
+            else if (message.StartsWith("<") || message.StartsWith(">") || message.Contains("HPING") || message.Contains("[ATTEMPT]"))
+            {
+                // 大量に出る試行ログ(ATTEMPT)や通信ログは目立たないグレーにする
+                textBlock.Foreground = Brushes.Gray;
+                textBlock.Text = message;
+            }
+            else
+            {
+                textBlock.Foreground = Brushes.WhiteSmoke;
+                textBlock.Text = message;
+            }
+
+            LogContainer.Children.Add(textBlock);
+            LogScrollViewer.ScrollToEnd();
+        }
+    }
+}
