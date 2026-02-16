@@ -67,10 +67,24 @@ namespace CyberAttackDemo
             _config.Load();
             await _engine.EnsureAttackScriptExistsAsync();
 
+            // デバッグモードの設定反映
+            // デバッグモードが無効な場合、操作説明を非表示にする
+            if (DebugInfoText != null)
+            {
+                DebugInfoText.IsVisible = _config.IsDebugMode;
+            }
+
+            // 初期化ログ
             WriteLog("SYSTEM INITIALIZED.", "system");
             WriteLog($"TARGET LOCKED: {_config.TargetIp}", "system");
             WriteLog($"SSH USER: {_config.SshUser}", "system");
             WriteLog($"ATTACK TIMEOUT SET TO: {_config.DdosDuration} SECONDS", "system");
+
+            if (_config.IsDebugMode)
+            {
+                WriteLog("DEBUG MODE: ENABLED (Keys Active)", "system");
+            }
+
             WriteLog("WAITING FOR USER AUTHORIZATION...", "system");
             
             if (TargetIpDisplay != null) TargetIpDisplay.Text = _config.TargetIp;
@@ -83,6 +97,9 @@ namespace CyberAttackDemo
         {
             // ユーザーアクティビティとして処理
             OnUserActivity(sender, e);
+
+            // デバッグモードが無効の場合、管理者用ショートカットを無効化
+            if (!_config.IsDebugMode) return;
 
             if (e.KeyModifiers == KeyModifiers.Control && e.Key == Key.Q) Close();
             if (e.Key == Key.F11) ToggleFullScreen();
@@ -158,7 +175,7 @@ namespace CyberAttackDemo
             await _engine.EnsureAttackScriptExistsAsync();
 
             string args = $"{AttackEngine.AttackScriptName} {_config.TargetIp} {_config.DdosDuration} dos";
-            await _engine.RunCommandAsync("bash", args);
+            await _engine.RunCommandAsync("bash", args, _config.DdosDuration);
 
             WriteLog("\n[ATTACK STOPPED] SHELL SCRIPT TERMINATED.", "system");
             SetBusyState(false, "次の攻撃の準備完了");
@@ -178,7 +195,7 @@ namespace CyberAttackDemo
 
             // 引数にユーザー名を追加: <IP> <DURATION> hydra <USER>
             string args = $"{AttackEngine.AttackScriptName} {_config.TargetIp} {_config.DdosDuration} hydra {_config.SshUser}";
-            await _engine.RunCommandAsync("bash", args);
+            await _engine.RunCommandAsync("bash", args, _config.DdosDuration + 30);
 
             WriteLog("\n[ATTACK FINISHED] HYDRA SESSION COMPLETE.", "system");
             SetBusyState(false, "次の攻撃の準備完了");
@@ -201,7 +218,7 @@ namespace CyberAttackDemo
             
             WriteLog($"[*] Executing: curl {args}", "system");
             
-            await _engine.RunCommandAsync("curl", args);
+            await _engine.RunCommandAsync("curl", args, 10);
 
             WriteLog("\n[ATTACK FINISHED] Response received (or blocked by IDS).", "system");
             SetBusyState(false, "次の攻撃の準備完了");
@@ -277,65 +294,51 @@ namespace CyberAttackDemo
 
             var textBlock = new TextBlock
             {
-                // Text = message, // ★ここでの一括設定を削除し、条件分岐内で設定またはInlinesを使用
                 FontFamily = "Monospace",
                 TextWrapping = TextWrapping.Wrap,
                 FontSize = 16,
                 Margin = new Thickness(0, 1, 0, 1)
             };
 
-            // 1. システムメッセージ
             if (forceType == "system")
             {
                 textBlock.Foreground = Brushes.Lime;
                 textBlock.Text = message;
             }
-            // 2. パスワード発見行のハイライト処理
-            //    条件: "password:"を含み、かつ試行中ログではない場合
-            else if (message.Contains("password:") && !message.Contains("[ATTEMPT]") && !message.Contains("login tries") && !message.Contains("[試行中]"))
+            // --- パスワード発見行のハイライト処理 ---
+            else if (message.Contains("password:") && !message.Contains("[ATTEMPT]") && !message.Contains("login tries"))
             {
                 int passIndex = message.IndexOf("password:");
-                if (passIndex >= 0 && passIndex + 9 < message.Length)
-                {
-                    string beforePass = message.Substring(0, passIndex + 9);
-                    string passValue = message.Substring(passIndex + 9);
+                string beforePass = message.Substring(0, passIndex + 9);
+                string passValue = message.Substring(passIndex + 9);
 
-                    // パスワードの値をシアン色(水色)かつ太字で強調
-                    textBlock.Inlines?.Add(new Avalonia.Controls.Documents.Run { Text = beforePass, Foreground = Brushes.Lime });
-                    textBlock.Inlines?.Add(new Avalonia.Controls.Documents.Run { Text = passValue, Foreground = Brushes.Cyan, FontWeight = FontWeight.Bold });
-                }
-                else
-                {
-                    textBlock.Foreground = Brushes.Lime;
-                    textBlock.Text = message;
-                }
+                // パスワードの値をシアン色(水色)かつ太字で強調
+                textBlock.Inlines?.Add(new Avalonia.Controls.Documents.Run { Text = beforePass, Foreground = Brushes.Lime });
+                textBlock.Inlines?.Add(new Avalonia.Controls.Documents.Run { Text = passValue, Foreground = Brushes.Cyan, FontWeight = FontWeight.Bold });
             }
-            // 3. 成功メッセージ
-            else if (message.Contains("valid password found") || message.Contains("[成功]"))
+            else if (message.Contains("valid password found"))
             {
                 textBlock.Foreground = Brushes.Cyan;
                 textBlock.FontWeight = FontWeight.Bold;
                 textBlock.Text = message;
             }
-            // 4. エラーまたは失敗
-            else if (message.Contains("[STDERR]") || message.Contains("ERROR") || message.Contains("Failed") || message.Contains("[失敗]"))
+            // ----------------------------------------
+            else if (message.Contains("[STDERR]") || message.Contains("ERROR") || message.Contains("Failed"))
             {
                 textBlock.Foreground = Brushes.Red;
                 textBlock.Text = message;
             }
-            // 5. 通常の成功/進行メッセージ
             else if (message.StartsWith("[*]") || message.StartsWith("[+]") || message.Contains("[発見]") || message.Contains("Process") || message.Contains("Vector"))
             {
                 textBlock.Foreground = Brushes.Lime;
                 textBlock.Text = message;
             }
-            // 6. 通信ログや試行ログ（目立たなくする）
             else if (message.StartsWith("<") || message.StartsWith(">") || message.Contains("HPING") || message.Contains("[ATTEMPT]"))
             {
+                // 大量に出る試行ログ(ATTEMPT)や通信ログは目立たないグレーにする
                 textBlock.Foreground = Brushes.Gray;
                 textBlock.Text = message;
             }
-            // 7. その他
             else
             {
                 textBlock.Foreground = Brushes.WhiteSmoke;
