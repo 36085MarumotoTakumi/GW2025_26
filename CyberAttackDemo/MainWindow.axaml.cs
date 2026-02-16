@@ -178,6 +178,13 @@ namespace CyberAttackDemo
             // カウントダウン付きで実行
             await RunCommandWithCountdown("bash", args, _config.DdosDuration);
 
+            // 解説を追加
+            WriteLog("\n------------------------------------------", "system");
+            WriteLog("[解説] DoS攻撃 (Denial of Service) とは？", "system");
+            WriteLog("ターゲットに対して大量のデータ(パケット)を送りつけ、処理能力や通信帯域を", "system");
+            WriteLog("パンクさせることで、サービスを利用不能にする攻撃です。", "system");
+            WriteLog("------------------------------------------\n", "system");
+
             WriteLog("\n[ATTACK STOPPED] SHELL SCRIPT TERMINATED.", "system");
             SetBusyState(false, "次の攻撃の準備完了");
         }
@@ -200,6 +207,13 @@ namespace CyberAttackDemo
             // Hydraは完了まで待つが、万が一のために設定時間+αで強制終了
             // カウントダウン付きで実行
             await RunCommandWithCountdown("bash", args, _config.DdosDuration + 30);
+
+            // 解説を追加
+            WriteLog("\n------------------------------------------", "system");
+            WriteLog("[解説] SSHパスワードクラック (Brute Force) とは？", "system");
+            WriteLog("ユーザー名とパスワードの組み合わせを辞書(リスト)から次々と試し、", "system");
+            WriteLog("ログイン可能な認証情報を力ずくで割り出す攻撃です。", "system");
+            WriteLog("------------------------------------------\n", "system");
 
             WriteLog("\n[ATTACK FINISHED] HYDRA SESSION COMPLETE.", "system");
             SetBusyState(false, "次の攻撃の準備完了");
