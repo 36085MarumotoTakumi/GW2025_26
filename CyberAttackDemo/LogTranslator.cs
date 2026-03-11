@@ -37,8 +37,7 @@ namespace CyberAttackDemo
             if (rawLog.Contains("Hydra") && rawLog.Contains("starting"))
                 output = "[開始] Hydraによるパスワード解析を開始しました...";
             
-            if (rawLog.Contains("login:") && rawLog.Contains("password:"))
-                output = $"[試行中] {rawLog.Trim()}";
+            // 【修正】正解ログを誤って[試行中]に変換してしまう処理を削除しました
             
             // 結果行の判定
             if (rawLog.Contains("valid password found") || rawLog.Contains("valid passwords found"))

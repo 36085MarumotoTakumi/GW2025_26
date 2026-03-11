@@ -146,7 +146,7 @@ namespace CyberAttackDemo
             if (ExecuteButton != null) ExecuteButton.IsEnabled = true;
             if (ResetButton != null) ResetButton.IsEnabled = true; // リセットボタン有効化
             
-            UpdateStatus("脆弱性が検出されました。攻撃手段を選択してください。", Brushes.Red);
+            UpdateStatus("攻撃手段を選択してください。", Brushes.Red);
         }
 
         // --- フェーズ2: 攻撃実行 ---

